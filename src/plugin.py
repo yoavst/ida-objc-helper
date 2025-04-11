@@ -5,7 +5,7 @@ import ida_idaapi
 import idaapi
 from ida_idaapi import plugin_t
 from ida_kernwin import action_handler_t
-
+from idahelper import widgets
 from plugins.objc_refcnt import optimizer as objc_optimizer
 from plugins.oslog import optimizers as oslog_optimizers
 
@@ -83,6 +83,8 @@ class ObjcHelperToggleActionHandler(action_handler_t):
             self.plugin.remove()
         else:
             self.plugin.install()
+
+        widgets.refresh_pseudocode_widgets()
 
         print("Obj-C optimization are now:", "enabled" if self.plugin.is_enabled else "disabled")
         print("Note: You might need to perform decompile again for this change to take effect.")
