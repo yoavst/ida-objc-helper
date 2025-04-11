@@ -24,7 +24,14 @@ Before:
 
 After: removed.
 ### Collapse `os_log`
-Before:
+
+<table>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+<tr>
+<td>
 
 ```c
   v9 = gLogObjects;
@@ -77,7 +84,9 @@ Before:
   }
 ```
 
-after:
+</td>
+<td>
+
 ```c
   if ( oslog_info_enabled() )
   {
@@ -88,6 +97,11 @@ after:
     oslog_info("Random log %@", v4);
   }
 ```
+
+</td>
+</tr>
+</table>
+
 
 ## Development
 In order to have autocomplete while developing, you need to add IDA's include folder ( `$IDA_INSTALLATION/python/3` ) to your IDE.
