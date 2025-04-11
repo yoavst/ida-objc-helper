@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from ida_hexrays import mblock_t, minsn_t, optblock_t, optinsn_t
 
-from base.utils import CounterMixin
+from objchelper.base.utils import CounterMixin
 
 
 class optblock_counter_t(optblock_t, CounterMixin, Protocol): ...

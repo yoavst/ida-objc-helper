@@ -5,11 +5,11 @@ import ida_hexrays
 from ida_hexrays import mblock_t, mcallinfo_t, minsn_t, mop_t
 from ida_typeinf import tinfo_t
 
-from idahelper import tif
-from idahelper.microcode import mblock, mcallarg, minsn, mop
-from idahelper.microcode.optimizers import optblock_counter_t, optblock_counter_wrapper_t
-from plugins.oslog import os_log
-from plugins.oslog.os_log import LogCallInfo, LogCallParams
+from objchelper.idahelper import tif
+from objchelper.idahelper.microcode import mblock, mcallarg, minsn, mop
+from objchelper.idahelper.microcode.optimizers import optblock_counter_t, optblock_counter_wrapper_t
+from objchelper.plugins.oslog import os_log
+from objchelper.plugins.oslog.os_log import LogCallInfo, LogCallParams
 
 
 def log_func_to_tif() -> tinfo_t | None:

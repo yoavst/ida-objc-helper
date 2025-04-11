@@ -3,7 +3,7 @@ __all__ = ["LogCallInfo", "LogCallParams", "get_call_info_for_name", "log_type_t
 import re
 from dataclasses import dataclass
 
-from base.utils import match
+from objchelper.base.utils import match
 
 
 @dataclass

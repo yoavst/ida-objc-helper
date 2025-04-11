@@ -11,8 +11,8 @@ from ida_hexrays import (
     mop_visitor_t,
 )
 
-from base.utils import CounterMixin, match
-from idahelper.microcode import minsn
+from objchelper.base.utils import CounterMixin, match
+from objchelper.idahelper.microcode import minsn
 
 from . import os_log
 
