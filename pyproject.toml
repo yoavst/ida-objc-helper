@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "ida-objc-helper"
+version = "0.1.0"
+description = "Objective-C optimizer and helper for IDA"
+authors = ["Yoav Sternberg <yoav.sternberg@gmail.com>"]
+readme = "README.md"
+repository = "https://github.com/yoavst/ida-objc-helper"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+
+[tool.poetry.group.dev.dependencies]
+vermin = "^1.6.0"
+ruff = "^0.11.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = [
+    # flake8-2020
+    "YTT",
+    # flake8-bandit
+    "S",
+    # flake8-bugbear
+    "B",
+    # flake8-builtins
+    "A",
+    # flake8-comprehensions
+    "C4",
+    # flake8-debugger
+    "T10",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # mccabe
+    "C90",
+    # pycodestyle
+    "E",
+    "W",
+    # pyflakes
+    "F",
+    # pygrep-hooks
+    "PGH",
+    # pyupgrade
+    "UP",
+    # ruff
+    "RUF",
+    # tryceratops
+    "TRY",
+]
+ignore = [
+    # LineTooLong
+    "E501",
+    # DoNotAssignLambda
+    "E731",
+    # Asserts
+    "S101",
+    # Name for classes
+    "N801",
+]
+
+[tool.ruff.format]
+preview = true

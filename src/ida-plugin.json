@@ -1,0 +1,7 @@
+{
+  "IDAMetadataDescriptorVersion": 1,
+  "plugin": {
+    "name": "Objc Helper",
+    "entryPoint": "plugin.py"
+  }
+}
