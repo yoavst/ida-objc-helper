@@ -26,7 +26,7 @@ class ScanLogState(Enum):
 # noinspection PyMethodMayBeStatic
 class log_macro_optimizer_t(optblock_counter_t):
     def func(self, blk: mblock_t) -> int:
-        if blk.mba.maturity < ida_hexrays.MMAT_GLBOPT1:
+        if blk.mba.maturity < ida_hexrays.MMAT_CALLS:
             return 0
 
         self.optimize_log_macro(blk)
@@ -37,9 +37,6 @@ class log_macro_optimizer_t(optblock_counter_t):
         return self.cnt
 
     def optimize_log_macro(self, blk: mblock_t) -> None:
-        if blk.mba.maturity < ida_hexrays.MMAT_GLBOPT1:
-            return
-
         # Find log call and extract params
         if (res := self.find_log_call(blk)) is None:
             return
