@@ -1,13 +1,12 @@
-__all__ = ["optimizer"]
+__all__ = ["log_error_case_optimizer_t"]
 
 import re
 
 import ida_hexrays
-from ida_hexrays import mblock_t, minsn_t, minsn_visitor_t, mop_t, mop_visitor_t
+from ida_hexrays import mblock_t, minsn_t, minsn_visitor_t, mop_t, mop_visitor_t, optinsn_t
 
 from objchelper.base.utils import CounterMixin, match_dict
 from objchelper.idahelper.microcode import mop
-from objchelper.idahelper.microcode.optimizers import optinsn_counter_t, optinsn_counter_wrapper_t
 
 # Replace var with val
 VARIABLES_TO_OPTIMIZE_OUT: dict[str | re.Pattern, int] = {
@@ -69,20 +68,15 @@ class jz_optimizer_t(minsn_visitor_t, CounterMixin):
         return 0
 
 
-class log_error_case_optimizer_t(optinsn_counter_t):
+class log_error_case_optimizer_t(optinsn_t):
     def func(self, blk: mblock_t, insn: minsn_t, optflags: int) -> int:
         variable_optimizer = variable_optimizer_t()
         jz_optimizer = jz_optimizer_t()
         insn.for_all_ops(variable_optimizer)
-        self.count(variable_optimizer.cnt)
         insn.for_all_insns(jz_optimizer)
-        self.count(jz_optimizer.cnt)
+        cnt = variable_optimizer.cnt + jz_optimizer.cnt
 
-        if self.cnt:
+        if cnt:
             blk.mark_lists_dirty()
             blk.mba.verify(True)
-        return self.cnt
-
-
-def optimizer():
-    return optinsn_counter_wrapper_t(log_error_case_optimizer_t)
+        return cnt

@@ -2,7 +2,7 @@ from enum import Enum
 from itertools import islice
 
 import ida_hexrays
-from ida_hexrays import mblock_t, mcallinfo_t, minsn_t, mop_t
+from ida_hexrays import mblock_t, mcallinfo_t, minsn_t, mop_t, optblock_t
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import tif
@@ -221,5 +221,5 @@ class log_macro_optimizer_t(optblock_counter_t):
         return LogCallParams(log_type, size, stack_base_offset, format_str_ea, insn.ea)
 
 
-def optimizer():
+def optimizer() -> optblock_t:
     return optblock_counter_wrapper_t(log_macro_optimizer_t)
