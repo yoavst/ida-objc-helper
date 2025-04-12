@@ -3,6 +3,7 @@
 # As such, I find it acceptable to use this code under the same license as the rest of the plugin.
 # https://github.com/gaasedelen/lucid/blob/master/plugins/lucid/core.py
 import abc
+import dataclasses
 import sys
 from collections.abc import Callable
 from typing import Protocol
@@ -11,7 +12,7 @@ import ida_hexrays
 import ida_idaapi
 import idaapi
 from ida_idaapi import plugin_t
-from ida_kernwin import UI_Hooks
+from ida_kernwin import UI_Hooks, action_desc_t
 
 
 class Component:
@@ -201,34 +202,73 @@ optimizer_factory_t = Callable[[], optimizer_t]
 
 
 class OptimizersComponent(Component):
-    def __init__(self, name: str, core: "PluginCore", optimizer_factories: list[optimizer_factory_t]):
+    def __init__(self, name: str, core: PluginCore, optimizer_factories: list[optimizer_factory_t]):
         super().__init__(name, core)
-        self.optimizer_factories = optimizer_factories
-        self.optimizers: list[optimizer_t] | None = None
+        self._optimizer_factories = optimizer_factories
+        self._optimizers: list[optimizer_t] | None = None
 
     def load(self) -> bool:
-        self.optimizers = [factory() for factory in self.optimizer_factories]
+        self._optimizers = [factory() for factory in self._optimizer_factories]
         return True
 
     def mount(self) -> bool:
-        assert self.optimizers is not None, "Load must be called before mount"
+        assert self._optimizers is not None, "Load must be called before mount"
 
-        for optimizer in self.optimizers:
+        for optimizer in self._optimizers:
             optimizer.install()
         return True
 
     def unmount(self):
-        assert self.optimizers is not None, "Load must be called before unmount"
+        assert self._optimizers is not None, "Load must be called before unmount"
 
-        for optimizer in self.optimizers:
+        for optimizer in self._optimizers:
             optimizer.remove()
 
     def unload(self):
-        self.optimizers = None
+        self._optimizers = None
 
     @staticmethod
     def factory(name: str, optimizer_factories: list[optimizer_factory_t]) -> ComponentFactory:
-        """
-        Factory method to create an optimizer. This is used to register the optimizer with IDA.
-        """
         return lambda core: OptimizersComponent(name, core, optimizer_factories)
+
+
+@dataclasses.dataclass
+class UIAction:
+    id: str
+    action_desc: action_desc_t
+    menu_location: str | None = None
+
+
+# Another common type of component is installing ui actions. This is a helper class to make it easier.
+class UIActionsComponent(Component):
+    def __init__(self, name: str, core: PluginCore, action_factories: list[Callable[[PluginCore], UIAction]]):
+        super().__init__(name, core)
+        self._action_factories = action_factories
+        self._actions: list[UIAction] | None = None
+
+    def load(self) -> bool:
+        self._actions = [factory(self.core) for factory in self._action_factories]
+        for action in self._actions:
+            if not idaapi.register_action(action.action_desc):
+                print(f"[{self.name}] failed to register action {action.id}, aborting load.")
+                return False
+
+            if action.menu_location is not None and not idaapi.attach_action_to_menu(
+                action.menu_location,
+                action.id,
+                0,
+            ):
+                print(
+                    f"[{self.name}] failed to attach action {action.id} to menu {action.menu_location}, aborting load."
+                )
+                return False
+
+        return True
+
+    def unload(self):
+        for action in self._actions:
+            idaapi.unregister_action(action.id)
+
+    @staticmethod
+    def factory(name: str, action_factories: list[Callable[[PluginCore], UIAction]]) -> ComponentFactory:
+        return lambda core: UIActionsComponent(name, core, action_factories)

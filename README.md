@@ -6,6 +6,7 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
   - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
 - collapse `__os_log_impl` calls.
+- When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 
 ## Installation
 1. clone the repo.
@@ -102,3 +103,4 @@ In order to have autocomplete while developing, you need to add IDA's include fo
 - on PyCharm you can add the folder to the interpreter's paths in the project settings. 
   Alternatively, you can create `idapython.pth` in `$VENV_FOLDER/Lib/site-packages` and add the path to it.
 
+Inside IDA, you can use `objchelper.reload()` to reload the plugin during development.
