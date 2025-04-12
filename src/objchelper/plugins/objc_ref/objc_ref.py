@@ -39,6 +39,9 @@ class XrefsChoose(Choose):
         ea, name = self.items[n]
         return hex(ea), name
 
+    def OnGetEA(self, n):
+        return self.items[n][0]
+
     def OnSelectLine(self, n):
         ea = int(self.items[n][0])
         ida_kernwin.jumpto(ea)
@@ -56,7 +59,7 @@ IGNORED_SECTIONS = ("__objc_const",)
 def get_name_for_ea(ea: int) -> str:
     func_name = idc.get_func_name(ea)
     func_address = idc.get_name_ea_simple(func_name)
-    return func_name if ea == func_address else f"{func_name} + {ea - func_address}"
+    return func_name if ea == func_address else f"{func_name}+{ea - func_address:08x}"
 
 
 def locate_selector_xrefs() -> None:
