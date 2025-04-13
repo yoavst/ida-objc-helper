@@ -50,7 +50,7 @@ class mop_optimizer_t(mop_visitor_t, CounterMixin):
                 return
 
             # Log type
-            log_type_arg = fi.args.at(LOG_TYPE_INDEX)
+            log_type_arg = fi.args[LOG_TYPE_INDEX]
             if log_type_arg.t != ida_hexrays.mop_n:
                 return
             log_type = log_type_arg.unsigned_value()

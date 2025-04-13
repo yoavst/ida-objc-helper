@@ -194,10 +194,10 @@ class log_macro_optimizer_t(optblock_counter_t):
             return None
 
         # Get operands
-        size_param = call_info.args.at(log_call_info.size_index)
-        buf_param = call_info.args.at(log_call_info.buf_index)
-        format_param = call_info.args.at(log_call_info.format_index)
-        type_param = call_info.args.at(log_call_info.type_index)
+        size_param = call_info.args[log_call_info.size_index]
+        buf_param = call_info.args[log_call_info.buf_index]
+        format_param = call_info.args[log_call_info.format_index]
+        type_param = call_info.args[log_call_info.type_index]
 
         # Verify types of operands
         if (

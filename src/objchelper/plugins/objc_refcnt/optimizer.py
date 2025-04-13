@@ -65,7 +65,7 @@ class mop_optimizer_t(mop_visitor_t, CounterMixin):
                 return
 
             # Swap mop containing call with arg0
-            op.swap(fi.args.at(0))
+            op.swap(fi.args[0])
             self.count()
 
 
@@ -101,7 +101,7 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             # No arguments, probably not optimized yet
             return False
 
-        if fi.args.at(0).has_side_effects():
+        if fi.args[0].has_side_effects():
             print("[Error] arguments with side effects are not supported yet!")
             return False
 
@@ -121,8 +121,8 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
 
         # Make instruction mov instead of call
         insn.opcode = ida_hexrays.m_mov
-        insn.l.swap(fi.args.at(0))
-        insn.d.swap(fi.retregs.at(0))
+        insn.l.swap(fi.args[0])
+        insn.d.swap(fi.retregs[0])
         self.count()
         return True
 
@@ -136,9 +136,9 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             return False
         insn.opcode = ida_hexrays.m_stx
         # src
-        insn.l.swap(fi.args.at(1))
+        insn.l.swap(fi.args[1])
         # dest
-        insn.d.swap(fi.args.at(0))
+        insn.d.swap(fi.args[0])
         # seg - need to be CS/DS according to the docs.
         insn.r.make_reg(mreg.cs_reg(), 2)
         self.count()
