@@ -50,11 +50,12 @@ class ObjcHelperToggleActionHandler(ida_kernwin.action_handler_t):
 
 
 plugin_core = PluginCore.factory(
-    "ObjcHelper", [
+    "ObjcHelper",
+    [
         objc_refcount_component,
         oslog_component,
         toggle_objc_helper_mount_component,
         objc_xrefs_component,
-        ObjcSelectorComponent
-    ]
+        ObjcSelectorComponent,
+    ],
 )

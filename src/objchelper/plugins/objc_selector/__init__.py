@@ -1,4 +1,4 @@
-__all__ = ['ObjcSelectorComponent']
+__all__ = ["ObjcSelectorComponent"]
 
 from objchelper.base.reloadable_plugin import Component, PluginCore
 from objchelper.plugins.objc_selector.objc_selector import objc_selector_hexrays_hooks_t
@@ -6,7 +6,7 @@ from objchelper.plugins.objc_selector.objc_selector import objc_selector_hexrays
 
 class ObjcSelectorComponent(Component):
     def __init__(self, core: PluginCore):
-        super().__init__('ObjcSelector', core)
+        super().__init__("ObjcSelector", core)
         self.hooks: objc_selector_hexrays_hooks_t | None = None
 
     def load(self):
