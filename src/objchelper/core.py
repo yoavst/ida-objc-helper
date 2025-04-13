@@ -7,6 +7,7 @@ from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
 from .idahelper import widgets
 from .plugins.objc_ref import objc_xrefs_component
 from .plugins.objc_refcnt import component as objc_refcount_component
+from .plugins.objc_selector import ObjcSelectorComponent
 from .plugins.oslog import component as oslog_component
 
 TOGGLE_ACTION_ID = "objchelper:toggle"
@@ -49,5 +50,11 @@ class ObjcHelperToggleActionHandler(ida_kernwin.action_handler_t):
 
 
 plugin_core = PluginCore.factory(
-    "ObjcHelper", [objc_refcount_component, oslog_component, toggle_objc_helper_mount_component, objc_xrefs_component]
+    "ObjcHelper", [
+        objc_refcount_component,
+        oslog_component,
+        toggle_objc_helper_mount_component,
+        objc_xrefs_component,
+        ObjcSelectorComponent
+    ]
 )

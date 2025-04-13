@@ -6,6 +6,7 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
   - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
 - collapse `__os_log_impl` calls.
+- Hide selectors of Objective-c calls.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 
 ## Installation
@@ -24,6 +25,26 @@ Before:
 ```
 
 After: removed.
+
+### Hide selectors of Obj-C calls
+Before:
+```c
+   -[NSFileManager removeItemAtPath:error:](
+      self: +[NSFileManager defaultManager](self: &OBJC_CLASS___NSFileManager, "defaultManager"),
+      "removeItemAtPath:error:",
+      +[NSString stringWithUTF8String:](self: &OBJC_CLASS___NSString, "stringWithUTF8String:, *(_QWORD *)&buf[v5]),
+      0LL);
+```
+
+After:
+```c
+   -[NSFileManager removeItemAtPath:error:](
+      self: +[NSFileManager defaultManager](self: &OBJC_CLASS___NSFileManager, <sel>),
+      <sel>,
+      +[NSString stringWithUTF8String:](self: &OBJC_CLASS___NSString, <sel>, *(_QWORD *)&buf[v5]),
+      0LL);
+```
+
 ### Collapse `os_log`
 Before:
 
