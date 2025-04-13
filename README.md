@@ -39,9 +39,8 @@ Before:
 After:
 ```c
    -[NSFileManager removeItemAtPath:error:](
-      +[NSFileManager defaultManager](&OBJC_CLASS___NSFileManager, <sel>),
-      <sel>,
-      +[NSString stringWithUTF8String:](&OBJC_CLASS___NSString, <sel>, *(_QWORD *)&buf[v5]),
+      +[NSFileManager defaultManager](&OBJC_CLASS___NSFileManager),
+      +[NSString stringWithUTF8String:](&OBJC_CLASS___NSString, *(_QWORD *)&buf[v5]),
       0LL);
 ```
 
