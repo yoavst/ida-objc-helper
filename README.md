@@ -30,18 +30,18 @@ After: removed.
 Before:
 ```c
    -[NSFileManager removeItemAtPath:error:](
-      self: +[NSFileManager defaultManager](self: &OBJC_CLASS___NSFileManager, "defaultManager"),
+      +[NSFileManager defaultManager](&OBJC_CLASS___NSFileManager, "defaultManager"),
       "removeItemAtPath:error:",
-      +[NSString stringWithUTF8String:](self: &OBJC_CLASS___NSString, "stringWithUTF8String:, *(_QWORD *)&buf[v5]),
+      +[NSString stringWithUTF8String:](&OBJC_CLASS___NSString, "stringWithUTF8String:", *(_QWORD *)&buf[v5]),
       0LL);
 ```
 
 After:
 ```c
    -[NSFileManager removeItemAtPath:error:](
-      self: +[NSFileManager defaultManager](self: &OBJC_CLASS___NSFileManager, <sel>),
+      +[NSFileManager defaultManager](&OBJC_CLASS___NSFileManager, <sel>),
       <sel>,
-      +[NSString stringWithUTF8String:](self: &OBJC_CLASS___NSString, <sel>, *(_QWORD *)&buf[v5]),
+      +[NSString stringWithUTF8String:](&OBJC_CLASS___NSString, <sel>, *(_QWORD *)&buf[v5]),
       0LL);
 ```
 
