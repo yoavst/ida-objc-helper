@@ -55,19 +55,11 @@ CLASS_TOKEN_REGEX = re.compile(
     + re.escape(COLOR_ON + SCOLOR_ADDR)
     + r"(?P<index2>[0-9A-Fa-f]{16})"
     + re.escape(COLOR_ON)
-    + "["
-    + re.escape(SCOLOR_IMPNAME)
-    + "|"
-    + re.escape(SCOLOR_DEMNAME)
-    + "]"
+    + ("[" + re.escape(SCOLOR_IMPNAME) + "|" + re.escape(SCOLOR_DEMNAME) + "]")
     + "OBJC_CLASS___"
     + "(?P<class>[A-Za-z0-9_]+)"
     + re.escape(COLOR_OFF)
-    + "["
-    + re.escape(SCOLOR_IMPNAME)
-    + "|"
-    + re.escape(SCOLOR_DEMNAME)
-    + "]"
+    + ("[" + re.escape(SCOLOR_IMPNAME) + "|" + re.escape(SCOLOR_DEMNAME) + "]")
     + "(?P<postfix>"
     + re.escape(COMMA_COLORED)
     + r" ?)?"

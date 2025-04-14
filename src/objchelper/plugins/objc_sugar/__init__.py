@@ -1,12 +1,12 @@
-__all__ = ["ObjcSelectorComponent"]
+__all__ = ["ObjcSugarComponent"]
 
 from objchelper.base.reloadable_plugin import Component, PluginCore
-from objchelper.plugins.objc_selector.objc_selector import objc_selector_hexrays_hooks_t
+from objchelper.plugins.objc_sugar.objc_sugar import objc_selector_hexrays_hooks_t
 
 
-class ObjcSelectorComponent(Component):
+class ObjcSugarComponent(Component):
     def __init__(self, core: PluginCore):
-        super().__init__("ObjcSelector", core)
+        super().__init__("ObjcSugar", core)
         self.hooks: objc_selector_hexrays_hooks_t | None = None
 
     def load(self):
