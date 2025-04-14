@@ -38,13 +38,10 @@ SEL_TOKEN_REGEX = re.compile(
     + r"(?P<selector>[A-Za-z0-9_:]+)"
     + '"'
     + re.escape(COLOR_OFF + SCOLOR_LOCNAME)
-    + "(?P<postfix>"
-    + re.escape(COMMA_COLORED)
-    + r" ?)?"
 )
 """
-a regex for a possible selector in IDA's pseudocode, with support for the prefix ", " or the postfix ","
-Its groups are: prefix, index, selector and postfix.
+a regex for a possible selector in IDA's pseudocode, with support for the prefix ", "
+Its groups are: prefix, index, and selector.
 """
 
 # noinspection RegExpDuplicateCharacterInClass
@@ -145,9 +142,9 @@ def modify_text(cfunc: cfunc_t, index_to_sel: dict[int, str], class_indices_to_r
         should_merge = modify_selectors(index_to_sel, line, prev_line)
         should_merge |= modify_class(class_indices_to_remove, line, prev_line)
 
-        if should_merge:
+        if should_merge and i != 0:
             lines_marked_for_removal.append(line)
-            ps[i - 1].line += line.line.strip()
+            merge(line.line, ps[i - 1])
 
     # Remove lines that are marked for removal
     for line_to_remove in reversed(lines_marked_for_removal):
@@ -168,12 +165,8 @@ def modify_selectors(index_to_sel: dict[int, str], line: simpleline_t, prev_line
                 print("[Error]: selector mismatch. Expected:", sel, "Actual:", result.group("selector"))
                 continue
 
-            # If match contains both a prefix and a postfix, remove only the prefix
-            left, right = result.span()
-            if result.group("prefix") and result.group("postfix"):
-                right = result.start("postfix")
-
             # Remove the selector, check if we need to merge lines
+            left, right = result.span()
             before_selector, after_selector = line.line[:left], line.line[right:]
             should_merge = should_merge or should_merge_line(before_selector, after_selector, prev_line)
             line.line = before_selector + after_selector
@@ -223,6 +216,15 @@ def should_merge_line(before_selector: str, after_selector: str, prev_line: str)
     # Merge if it will not lead to a long line
     prev_line_without_tags = tag_remove(prev_line)
     return len(after_without_tags) + len(prev_line_without_tags) < MAX_LINE_SIZE
+
+
+def merge(text: str, line: simpleline_t) -> None:
+    """Merge `text` to the end of `line`. If `line` ends with a comma, the comma will be removed."""
+    line_without_tags = tag_remove(line.line)
+    if line_without_tags.endswith(","):
+        last_comma_index = line.line.rfind(COMMA_COLORED)
+        line.line = line.line[:last_comma_index] + line.line[last_comma_index + len(COMMA_COLORED) :]
+    line.line += text.strip()
 
 
 def to_hex(n: int, *, length: int) -> str:
