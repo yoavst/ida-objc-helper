@@ -28,6 +28,10 @@ OS_LOG_NAMES: list[str | re.Pattern] = [
     "__os_log_error_impl",
     "__os_log_debug_impl",
     "__os_log_info_impl",
+    re.compile(r"__os_log_impl_(\d+)"),
+    re.compile(r"__os_log_error_impl_(\d+)"),
+    re.compile(r"__os_log_debug_impl_(\d+)"),
+    re.compile(r"__os_log_info_impl(\d+)")
 ]
 OS_LOG_IMPL_CALL_INFO = LogCallInfo(type_index=2, format_index=3, buf_index=4, size_index=5)
 
