@@ -18,6 +18,7 @@ from objchelper.idahelper.microcode import minsn, mreg
 # Replace f(x) with x
 ID_FUNCTIONS_TO_REPLACE_WITH_ARG: list[str | re.Pattern] = [
     "objc_retain",
+    "objc_retainAutorelease",
     "objc_autoreleaseReturnValue",
     "_objc_claimAutoreleasedReturnValue",
     re.compile(r"_objc_claimAutoreleasedReturnValue_(\d+)"),
