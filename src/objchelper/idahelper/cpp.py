@@ -10,5 +10,5 @@ def demangle_name_only(symbol: str) -> str | None:
     """Demangle cpp symbol."""
     res = idc.demangle_name(symbol, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
     if res is not None:
-        return res.split('(')[0]
+        return res.split("(")[0]
     return None
