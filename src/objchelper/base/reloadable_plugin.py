@@ -10,10 +10,12 @@ from typing import Protocol
 
 import ida_hexrays
 import ida_idaapi
+import ida_kernwin
 import idaapi
 from ida_idaapi import plugin_t
 from ida_kernwin import UI_Hooks, action_desc_t
 
+IS_DEBUG = False
 
 class Component:
     """
@@ -163,15 +165,24 @@ class ReloadablePlugin(abc.ABC, plugin_t):
         self._plugin_core_factory = plugin_core_factory
         self._base_package_name = base_package_name
         self.core: PluginCore | None = None
+        self._reload_plugin_action_id = f"{self._global_name}:reload_plugin"
 
     def init(self) -> int:
         self.core = self._plugin_core_factory(defer_load=True, should_mount=True)
         # Provide access from ida python console
         setattr(sys.modules["__main__"], self._global_name, self)
+        # register the reload action
+        idaapi.register_action(idaapi.action_desc_t(
+            self._reload_plugin_action_id,
+            f"Reload plugin: {getattr(self, 'wanted_name', self._global_name)}",
+            PluginReloadActionHandler(self),
+            "f2" if IS_DEBUG else None
+        ))
         # Keep plugin alive
         return ida_idaapi.PLUGIN_KEEP
 
     def term(self) -> None:
+        idaapi.unregister_action(self._reload_plugin_action_id)
         if self.core is not None:
             self.core.unload()
 
@@ -193,6 +204,20 @@ class ReloadablePlugin(abc.ABC, plugin_t):
 
         # Load the plugin core
         self.core = self._plugin_core_factory(defer_load=False, should_mount=was_mounted)
+
+
+class PluginReloadActionHandler(ida_kernwin.action_handler_t):
+    def __init__(self, plugin: ReloadablePlugin):
+        super().__init__()
+        self.plugin = plugin
+
+    def activate(self, ctx):
+        self.plugin.reload()
+        print("Reloaded plugin!")
+        return 1
+
+    def update(self, ctx) -> int:
+        return idaapi.AST_ENABLE_ALWAYS
 
 
 # A common type of component is installing optimizers for the decompiler. This is a helper class to make it easier.

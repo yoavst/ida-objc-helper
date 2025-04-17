@@ -22,7 +22,7 @@ toggle_objc_helper_mount_component = UIActionsComponent.factory(
                 "Toggle Obj-C helper optimizations",
                 ObjcHelperToggleActionHandler(core),
             ),
-            menu_location="Edit/Other/...",
+            menu_location="Edit/Other/Objective-C/...",
         )
     ],
 )
