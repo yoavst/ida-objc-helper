@@ -1,9 +1,10 @@
 import ida_hexrays
-import ida_name
 from ida_hexrays import (
     mop_addr_t,
     mop_t,
 )
+
+from objchelper.idahelper import memory
 
 
 def from_global_ref(ea: int) -> mop_t:
@@ -22,5 +23,12 @@ def get_name(mop: mop_t) -> str | None:
     if mop.helper is not None:
         return mop.helper
     elif mop.g is not None:
-        ea = mop.g
-        return ida_name.get_name(ea)
+        return memory.name_from_ea(mop.g)
+
+
+def get_str(mop: mop_t) -> str | None:
+    """Given a mop representing a string, return its value"""
+    if mop.t == ida_hexrays.mop_str:
+        return mop.cstr
+    elif mop.is_glbaddr():
+        return memory.str_from_ea(mop.a.g) or None
