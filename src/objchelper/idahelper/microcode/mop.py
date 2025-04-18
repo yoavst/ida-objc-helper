@@ -51,7 +51,7 @@ def get_stack_offset(mop: mop_t) -> int | None:
     """Given a mop representing a stack address, return its offset"""
     offset = None
     if mop.t == ida_hexrays.mop_l:
-        offset = mop.l.var().get_stkoff()
+        offset = mop.l.var().get_stkoff() + mop.l.off
     elif mop.t == ida_hexrays.mop_S:
         offset = mop.s.off
     elif mop.t == ida_hexrays.mop_a:

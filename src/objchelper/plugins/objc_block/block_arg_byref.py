@@ -57,8 +57,8 @@ struct {class_name} {{
     struct {class_name} *forwarding;
     int flags;
     int size;
-    void (*keep)(void *);
-    void (*dispose)(void *);
+    void (*byref_keep)(void  *dst, void *src);
+    void (*byref_dispose)(void *);
     {var_type} value;
 }};
 #pragma pack(pop)

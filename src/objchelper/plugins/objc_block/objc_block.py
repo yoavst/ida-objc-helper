@@ -246,7 +246,7 @@ class ScanForRefArg:
             self._state.current_field = BlockArgByRefField.VARIABLE
 
     def _helper_keep(self, value: mop_t, _offset: int) -> None:
-        if value.size != 8 or value.is_glbaddr():
+        if value.size != 8 or not value.is_glbaddr():
             self._state = ScanForBlockArgByRefState.initial()
             return
 
@@ -254,7 +254,7 @@ class ScanForRefArg:
         self._state.current_field = BlockArgByRefField.HELPER_DISPOSE
 
     def _helper_dispose(self, value: mop_t, _offset: int) -> None:
-        if value.size != 8 or value.is_glbaddr():
+        if value.size != 8 or not value.is_glbaddr():
             self._state = ScanForBlockArgByRefState.initial()
             return
 
