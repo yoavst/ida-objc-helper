@@ -18,6 +18,13 @@ def from_global_ref(ea: int) -> mop_t:
     return mop
 
 
+def from_const_value(value: int, size: int) -> mop_t:
+    """Given a const value, create a mop that represents it"""
+    mop = mop_t()
+    mop.make_number(value, size)
+    return mop
+
+
 def get_name(mop: mop_t) -> str | None:
     """Given a mop representing a symbol/helper, return its name"""
     if mop.helper is not None:
@@ -32,3 +39,21 @@ def get_str(mop: mop_t) -> str | None:
         return mop.cstr
     elif mop.is_glbaddr():
         return memory.str_from_ea(mop.a.g) or None
+
+
+def get_const_int(mop: mop_t, is_signed: bool = False) -> int | None:
+    """Given a mop representing a const int, return its value"""
+    if mop.t == ida_hexrays.mop_n:
+        return mop.value(is_signed)
+
+
+def get_stack_offset(mop: mop_t) -> int | None:
+    """Given a mop representing a stack address, return its offset"""
+    offset = None
+    if mop.t == ida_hexrays.mop_l:
+        offset = mop.l.var().get_stkoff()
+    elif mop.t == ida_hexrays.mop_S:
+        offset = mop.s.off
+    elif mop.t == ida_hexrays.mop_a:
+        offset = get_stack_offset(mop.a)
+    return offset if offset is not None and offset != -1 else None

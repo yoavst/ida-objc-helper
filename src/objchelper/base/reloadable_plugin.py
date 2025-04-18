@@ -172,12 +172,14 @@ class ReloadablePlugin(abc.ABC, plugin_t):
         # Provide access from ida python console
         setattr(sys.modules["__main__"], self._global_name, self)
         # register the reload action
-        idaapi.register_action(idaapi.action_desc_t(
-            self._reload_plugin_action_id,
-            f"Reload plugin: {getattr(self, 'wanted_name', self._global_name)}",
-            PluginReloadActionHandler(self),
-            "f2" if IS_DEBUG else None
-        ))
+        idaapi.register_action(
+            idaapi.action_desc_t(
+                self._reload_plugin_action_id,
+                f"Reload plugin: {getattr(self, 'wanted_name', self._global_name)}",
+                PluginReloadActionHandler(self),
+                "f2" if IS_DEBUG else None,
+            )
+        )
         # Keep plugin alive
         return ida_idaapi.PLUGIN_KEEP
 

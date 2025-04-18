@@ -5,6 +5,7 @@ import idaapi
 
 from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
 from .idahelper import widgets
+from .plugins.objc_block import ObjcBlockComponent
 from .plugins.objc_ref import objc_xrefs_component
 from .plugins.objc_refcnt import component as objc_refcount_component
 from .plugins.objc_sugar import ObjcSugarComponent
@@ -57,5 +58,6 @@ plugin_core = PluginCore.factory(
         toggle_objc_helper_mount_component,
         objc_xrefs_component,
         ObjcSugarComponent,
+        ObjcBlockComponent,
     ],
 )
