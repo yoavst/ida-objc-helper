@@ -86,6 +86,15 @@ def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
     return udm
 
 
+def set_udm_type(tif: tinfo_t, udm: udm_t, udm_type: tinfo_t) -> bool:
+    """For a `udm` of a `tif`, set its type"""
+    index = tif.find_udm(udm, ida_typeinf.STRMEM_OFFSET)
+    if index == -1:
+        return False
+
+    return tif.set_udm_type(index, udm_type) == 0
+
+
 def create_from_c_decl(decl: str) -> bool:
     """Create a new type definition from `decl`"""
     return not ida_typeinf.idc_parse_types(decl, 0)

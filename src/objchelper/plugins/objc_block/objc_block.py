@@ -7,7 +7,6 @@ import ida_hexrays
 from ida_hexrays import (
     cexpr_t,
     cfunc_t,
-    cinsn_t,
     lvar_saved_info_t,
     lvar_t,
     lvar_uservec_t,
@@ -20,7 +19,7 @@ from ida_hexrays import (
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import tif, widgets
-from objchelper.idahelper.ast import cfunc
+from objchelper.idahelper.ast import cexpr, cfunc
 from objchelper.idahelper.microcode import mba, mblock, mop
 from objchelper.plugins.objc_block.block_arg_byref import (
     BlockArgByRefField,
@@ -67,31 +66,41 @@ def try_add_block_arg_byref_to_func(func: cfunc_t):
 
     # Scan the cfunc for possible ref args for blocks
     assignments = get_struct_fields_assignments(func, block_lvars)
-    by_ref_args_candidates: dict[int, lvar_t] = {}
+    by_ref_args_candidates: dict[int, StructFieldAssignment] = {}  # stack_offset -> assignment
     for lvar in block_lvars:
         if lvar.name not in assignments:
             print(f"[Error] Block variable {lvar.name} has no assignments")
             continue
 
-        for stack_offset, _ in get_by_ref_args_for_block_candidates(lvar, assignments[lvar.name]):
-            by_ref_args_candidates[stack_offset] = lvar
+        by_ref_args_candidates.update(get_by_ref_args_for_block_candidates(assignments[lvar.name]))
 
     # scan the microcode using the offsets to see if any of them is a start of a by ref arg struct.
-    results = ScanForRefArg(set(by_ref_args_candidates.keys())).scan(func.mba)
-    changes: dict[str, tinfo_t] = {}
-    for result in results:
+    lvar_changes: dict[str, tinfo_t] = {}  # lvar_name -> new_type_for_lvar
+    for result in ScanForRefArg(set(by_ref_args_candidates.keys())).scan(func.mba):
         new_type = create_block_arg_byref_type(result.initialization_ea, result.variable.size, result.has_helpers)
-        lvar = cfunc.get_lvar_by_offset(func, result.initial_stack_offset)
-        changes[lvar.name] = new_type
-        # We need to find the lvar that matches the offset
+        block_arg_by_ref_lvar = cfunc.get_lvar_by_offset(func, result.initial_stack_offset)
+        lvar_changes[block_arg_by_ref_lvar.name] = new_type
 
-        # Rename variable so IDA would consider it modified
-        ida_hexrays.rename_lvar(func.entry_ea, lvar.name, lvar.name)
+        # given: a.b = &block_by_ref, set b's type to block_by_ref*
+        assignment = by_ref_args_candidates[result.initial_stack_offset]
+        set_new_type_for_member(assignment, tif.pointer_of(new_type))
+
+        # Rename variable so IDA would consider it modified (Official IDA hack)
+        ida_hexrays.rename_lvar(func.entry_ea, block_arg_by_ref_lvar.name, block_arg_by_ref_lvar.name)
 
     # Apply new types for the lvars
-    modifier = block_arg_by_ref_lvars_modifiers_t(changes)
-    ida_hexrays.modify_user_lvars(func.entry_ea, modifier)
+    ida_hexrays.modify_user_lvars(func.entry_ea, block_arg_by_ref_lvars_modifiers_t(lvar_changes))
+
+    # Finally, refresh the widget
     widgets.refresh_pseudocode_widgets()
+
+
+def set_new_type_for_member(assignment: StructFieldAssignment, new_type: tinfo_t) -> bool:
+    """Set the new type for the member of the struct"""
+    if not tif.set_udm_type(assignment.type, assignment.member, new_type):
+        print(f"[Error] Failed to set udm type for {assignment.member.name} in {assignment.type.get_type_name()}")
+        return False
+    return True
 
 
 @dataclass
@@ -269,14 +278,15 @@ class ScanForRefArg:
         self._state = ScanForBlockArgByRefState.initial()
 
 
-def get_by_ref_args_for_block_candidates(
-    lvar: lvar_t, assignments: list[StructFieldAssignment]
-) -> list[tuple[int, cinsn_t]]:
-    """For each assignment to a block argument, if it is a reference to a stack offset, return the stack offset"""
-    possible_stack_offsets = []
-    for assignment in get_args_assignments_to_block(lvar, assignments):
+def get_by_ref_args_for_block_candidates(assignments: list[StructFieldAssignment]) -> dict[int, StructFieldAssignment]:
+    """Filter assignments such that the rvalue is ref to stack variable. Return mapping of var_stack_offset to assignment"""
+    possible_stack_offsets = {}
+    for assignment in assignments:
+        # Skip fields that are not args
+        if assignment.member.name in IDA_BLOCK_TYPE_BUILTIN_FIELD_NAMES:
+            continue
         # Find assignments that are refs to the stack: "block.lvar2 = &v8
-        expr = assignment.expr
+        expr = cexpr.strip_casts(assignment.expr)
         if expr.op != ida_hexrays.cot_ref:
             continue
         refed_expr: cexpr_t = expr.x
@@ -289,20 +299,8 @@ def get_by_ref_args_for_block_candidates(
         stack_offset: int = refed_expr.v.getv().get_stkoff()
         if stack_offset == -1:
             continue
-        possible_stack_offsets.append((stack_offset, assignment.insn))
+        possible_stack_offsets[stack_offset] = assignment
     return possible_stack_offsets
-
-
-def get_args_assignments_to_block(
-    lvar: lvar_t, assignments: list[StructFieldAssignment]
-) -> Iterator[StructFieldAssignment]:
-    """Return all assignments to the block variable that are not builtin fields (aka block arguments)"""
-    lvar_type = lvar.type()
-    for assignment in assignments:
-        member = tif.get_member(lvar_type, assignment.offset)
-        if member.name in IDA_BLOCK_TYPE_BUILTIN_FIELD_NAMES:
-            continue
-        yield assignment
 
 
 def get_ida_block_lvars(func: cfunc_t) -> list[lvar_t]:

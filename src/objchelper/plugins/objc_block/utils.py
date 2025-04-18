@@ -5,16 +5,20 @@ from dataclasses import dataclass
 import ida_hexrays
 import idaapi
 from ida_hexrays import cexpr_t, cfunc_t, cinsn_t, lvar_t
+from ida_typeinf import tinfo_t, udm_t
+
+from objchelper.idahelper import tif
 
 
 @dataclass
 class StructFieldAssignment:
-    offset: int
+    type: tinfo_t
+    member: udm_t
     expr: cexpr_t
     insn: cinsn_t
 
     def __repr__(self):
-        return f"StructAssignment(offset={self.offset}, expr={self.expr.dstr()}, insn={self.insn.dstr()})"
+        return f"StructAssignment(member={self.member.name}, expr={self.expr.dstr()}, insn={self.insn.dstr()})"
 
 
 class LvarFieldsAssignmentsCollector(ida_hexrays.ctree_visitor_t):
@@ -48,13 +52,18 @@ class LvarFieldsAssignmentsCollector(ida_hexrays.ctree_visitor_t):
             return 0
 
         # Check if the local variable is what we are looking for
-        target_obj_lvar = target_obj.v.getv()
+        target_obj_lvar: lvar_t = target_obj.v.getv()
         if target_obj_lvar.name not in self._target_lvars_names:
+            return 0
+
+        lvar_type = target_obj_lvar.type()
+        member = tif.get_member(lvar_type, target.m)
+        if member is None:
             return 0
 
         # Save the assignment
         self.assignments.setdefault(target_obj_lvar.name, []).append(
-            StructFieldAssignment(offset=target.m, expr=exp.y, insn=self.parent_insn())
+            StructFieldAssignment(type=lvar_type, member=member, expr=exp.y, insn=self.parent_insn())
         )
         return 0
 

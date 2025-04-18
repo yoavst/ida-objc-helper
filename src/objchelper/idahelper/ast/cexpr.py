@@ -13,3 +13,10 @@ def get_call_name(call_expr: cexpr_t) -> str | None:
         return memory.name_from_ea(called_func.obj_ea)
 
     return None
+
+
+def strip_casts(expr: cexpr_t) -> cexpr_t:
+    """Strip casts from the expression."""
+    while expr.op == ida_hexrays.cot_cast:
+        expr = expr.x
+    return expr
