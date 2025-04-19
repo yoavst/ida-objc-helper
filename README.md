@@ -6,6 +6,7 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
   - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
 - collapse `__os_log_impl` calls.
+- collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection)
 - Hide selectors and static classes from Objective-c calls.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 
@@ -42,6 +43,57 @@ After:
       +[NSFileManager defaultManager](),
       +[NSString stringWithUTF8String:](*(_QWORD *)&buf[v5]),
       0LL);
+```
+
+### Block initializers
+Before:
+```c
+v10 = 0LL;
+v15 = &v10;
+v16 = 0x2000000000LL;
+v17 = 0;
+if ( a1 )
+{
+  x0_8 = *(NSObject **)(a1 + 16);
+  v13.isa = _NSConcreteStackBlock;
+  *(_QWORD *)&v13.flags = 0x40000000LL;
+  v13.invoke = func_name_block_invoke;
+  v13.descriptor = &stru_100211F48;
+  v13.lvar3 = a1;
+  v13.lvar4 = a2;
+  v13.lvar1 = a3;
+  v13.lvar2 = &v10;
+  dispatch_sync(queue: x0_8, block: &v13);
+  v11 = *((_BYTE *)v15 + 24);
+}
+else
+{
+  v11 = 0;
+}
+_Block_object_dispose(&v10, 8);
+return v11 & 1;
+```
+
+After:
+```c
+v10 = _byref_block_arg_init(0);
+v10.value = 0;
+if ( a1 )
+{
+  v6 = *(NSObject **)(a1 + 16);
+  v9 = _stack_block_init(0x40000000, &stru_100211F48, func_name_block_invoke);
+  v9.lvar3 = a1;
+  v9.lvar4 = a2;
+  v9.lvar1 = a3;
+  v9.lvar2 = &v10;
+  dispatch_sync(queue: v6, block: &v9);
+  value = v10.forwarding->value;
+}
+else
+{
+  value = 0;
+}
+return value & 1;
 ```
 
 ### Collapse `os_log`

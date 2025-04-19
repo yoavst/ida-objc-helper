@@ -5,9 +5,10 @@ import idaapi
 
 from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
 from .idahelper import widgets
+from .plugins.objc_block import objc_block_args_analyzer_component, objc_block_optimizer_component
 from .plugins.objc_ref import objc_xrefs_component
 from .plugins.objc_refcnt import component as objc_refcount_component
-from .plugins.objc_sugar import ObjcSugarComponent
+from .plugins.objc_sugar import objc_sugar_component
 from .plugins.oslog import component as oslog_component
 
 TOGGLE_ACTION_ID = "objchelper:toggle"
@@ -56,6 +57,8 @@ plugin_core = PluginCore.factory(
         oslog_component,
         toggle_objc_helper_mount_component,
         objc_xrefs_component,
-        ObjcSugarComponent,
+        objc_sugar_component,
+        objc_block_args_analyzer_component,
+        objc_block_optimizer_component,
     ],
 )
