@@ -84,6 +84,7 @@ def is_block_arg_byref_type(tinfo: tinfo_t) -> bool:
     """Check if the given `tif` is a block arg byref type"""
     if not tinfo.is_struct():
         return False
+    # noinspection PyTypeChecker
     name: str | None = tinfo.get_type_name()
     return name is not None and name.startswith(TYPE_BLOCK_ARG_BYREF_PREFIX)
 

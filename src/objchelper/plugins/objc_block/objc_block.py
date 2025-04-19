@@ -7,20 +7,21 @@ import ida_hexrays
 from ida_hexrays import (
     cexpr_t,
     cfunc_t,
-    lvar_saved_info_t,
-    lvar_t,
-    lvar_uservec_t,
-    lvars_t,
     mba_t,
     minsn_t,
     mop_t,
-    user_lvar_modifier_t,
 )
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import tif, widgets
-from objchelper.idahelper.ast import cexpr, cfunc
+from objchelper.idahelper.ast import cexpr, cfunc, lvars
+from objchelper.idahelper.ast.lvars import LvarModification
 from objchelper.idahelper.microcode import mba, mblock, mop
+from objchelper.plugins.objc_block.block import (
+    FLAG_BLOCK_HAS_COPY_DISPOSE,
+    block_member_is_arg_field,
+    get_ida_block_lvars,
+)
 from objchelper.plugins.objc_block.block_arg_byref import (
     BlockArgByRefField,
     create_block_arg_byref_type,
@@ -28,69 +29,37 @@ from objchelper.plugins.objc_block.block_arg_byref import (
 )
 from objchelper.plugins.objc_block.utils import StructFieldAssignment, get_struct_fields_assignments
 
-IDA_BLOCK_TYPE_NAME_PREFIX = "Block_layout_"
-IDA_BLOCK_TYPE_BUILTIN_FIELD_NAMES = {
-    "isa",
-    "flags",
-    "reserved",
-    "invoke",
-    "description",
-    "copy_helper",
-    "dispose_helper",
-}
 
-CLANG_BLOCK_HAS_COPY_DISPOSE = 1 << 25
-
-
-class block_arg_by_ref_lvars_modifiers_t(user_lvar_modifier_t):
-    def __init__(self, new_types: dict[str, tinfo_t]):
-        super().__init__()
-        self._new_types = new_types
-
-    def modify_lvars(self, lvinf: lvar_uservec_t) -> bool:
-        if len(self._new_types) == 0:
-            return False
-
-        for lvar in lvinf.lvvec:
-            lvar: lvar_saved_info_t
-            if lvar.name in self._new_types:
-                lvar.type = self._new_types[lvar.name]
-
-        return True
-
-
-def try_add_block_arg_byref_to_func(func: cfunc_t):
+def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
     block_lvars = get_ida_block_lvars(func)
     if not block_lvars:
-        return 0
+        return
 
     # Scan the cfunc for possible ref args for blocks
     assignments = get_struct_fields_assignments(func, block_lvars)
-    by_ref_args_candidates: dict[int, StructFieldAssignment] = {}  # stack_offset -> assignment
+    stack_off_to_its_assignment: dict[int, StructFieldAssignment] = {}  # stack_offset -> assignment
     for lvar in block_lvars:
         if lvar.name not in assignments:
             print(f"[Error] Block variable {lvar.name} has no assignments")
             continue
 
-        by_ref_args_candidates.update(get_by_ref_args_for_block_candidates(assignments[lvar.name]))
+        stack_off_to_its_assignment.update(get_by_ref_args_for_block_candidates(assignments[lvar.name]))
 
     # scan the microcode using the offsets to see if any of them is a start of a by ref arg struct.
-    lvar_changes: dict[str, tinfo_t] = {}  # lvar_name -> new_type_for_lvar
-    for result in ScanForRefArg(set(by_ref_args_candidates.keys())).scan(func.mba):
+    lvar_modifications: dict[str, LvarModification] = {}  # lvar_name -> type_modification
+    for result in ScanForRefArg(set(stack_off_to_its_assignment.keys())).scan(func.mba):
         new_type = create_block_arg_byref_type(result.initialization_ea, result.variable.size, result.has_helpers)
         block_arg_by_ref_lvar = cfunc.get_lvar_by_offset(func, result.initial_stack_offset)
-        lvar_changes[block_arg_by_ref_lvar.name] = new_type
+        lvar_modifications[block_arg_by_ref_lvar.name] = LvarModification(type=new_type)
 
         # given: a.b = &block_by_ref, set b's type to block_by_ref*
         # It would not be a cast assign, as the type is already a pointer.
-        assignment = by_ref_args_candidates[result.initial_stack_offset]
+        assignment = stack_off_to_its_assignment[result.initial_stack_offset]
         set_new_type_for_member(assignment, tif.pointer_of(new_type))
 
-        # Rename variable so IDA would consider it modified (Official IDA hack)
-        ida_hexrays.rename_lvar(func.entry_ea, block_arg_by_ref_lvar.name, block_arg_by_ref_lvar.name)
-
     # Apply new types for the lvars
-    ida_hexrays.modify_user_lvars(func.entry_ea, block_arg_by_ref_lvars_modifiers_t(lvar_changes))
+    if not lvars.perform_lvar_modifications(func, lvar_modifications):
+        print("[Error] Failed to modify lvars")
 
     # Finally, refresh the widget
     widgets.refresh_pseudocode_widgets()
@@ -226,7 +195,7 @@ class ScanForRefArg:
             self._state.flags = mop.from_const_value(flags, 4)
             self._state.size = mop.from_const_value(size, 4)
 
-        if flags & CLANG_BLOCK_HAS_COPY_DISPOSE:
+        if flags & FLAG_BLOCK_HAS_COPY_DISPOSE:
             self._state.has_helpers = True
             self._state.current_field = BlockArgByRefField.HELPER_KEEP
         else:
@@ -248,7 +217,7 @@ class ScanForRefArg:
 
         # Flags cannot be none because we checked it before
         flags = mop.get_const_int(self._state.flags, is_signed=False)
-        if flags & CLANG_BLOCK_HAS_COPY_DISPOSE:
+        if flags & FLAG_BLOCK_HAS_COPY_DISPOSE:
             self._state.has_helpers = True
             self._state.current_field = BlockArgByRefField.HELPER_KEEP
         else:
@@ -287,7 +256,7 @@ def get_by_ref_args_for_block_candidates(assignments: list[StructFieldAssignment
     possible_stack_offsets = {}
     for assignment in assignments:
         # Skip fields that are not args
-        if assignment.member.name in IDA_BLOCK_TYPE_BUILTIN_FIELD_NAMES:
+        if not block_member_is_arg_field(assignment.member):
             continue
         # Find assignments that are refs to the stack: "block.lvar2 = &v8
         expr = cexpr.strip_casts(assignment.expr)
@@ -305,16 +274,3 @@ def get_by_ref_args_for_block_candidates(assignments: list[StructFieldAssignment
             continue
         possible_stack_offsets[stack_offset] = assignment
     return possible_stack_offsets
-
-
-def get_ida_block_lvars(func: cfunc_t) -> list[lvar_t]:
-    """Get all Obj-C block variables in the function"""
-    lvars: lvars_t = func.get_lvars()
-    block_lvars: list[lvar_t] = []
-    for var in lvars:
-        # noinspection PyTypeChecker
-        type_name: str = var.type().get_type_name()
-        if type_name is not None and type_name.startswith(IDA_BLOCK_TYPE_NAME_PREFIX):
-            block_lvars.append(var)
-
-    return block_lvars
