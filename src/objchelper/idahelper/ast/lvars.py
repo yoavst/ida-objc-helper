@@ -56,8 +56,7 @@ def perform_lvar_modifications(func: cfunc_t, modifications: dict[str, LvarModif
     # `lvars.lvvec` contains only variables modified from the defaults.
     # To change other variables, you can, for example, first use rename_lvars, so they get added to this list
     for name in modifications:
-        if name not in func.get_lvars():
-            rename_lvar(entry_ea, name, name)
+        rename_lvar(entry_ea, name, name)
 
     return modify_user_lvars(entry_ea, custom_lvars_modifiers_t(modifications))
 
