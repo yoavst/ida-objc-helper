@@ -6,7 +6,7 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
   - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
 - collapse `__os_log_impl` calls.
-- collapse blocks initializers and detect `__block` variables.
+- collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection)
 - Hide selectors and static classes from Objective-c calls.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 
