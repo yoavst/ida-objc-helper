@@ -22,6 +22,7 @@ ID_FUNCTIONS_TO_REPLACE_WITH_ARG: list[str | re.Pattern] = [
     "objc_autoreleaseReturnValue",
     "_objc_claimAutoreleasedReturnValue",
     re.compile(r"_objc_claimAutoreleasedReturnValue_(\d+)"),
+    "_objc_retainBlock",
 ]
 
 # Remove f(x) calls
@@ -30,6 +31,11 @@ VOID_FUNCTIONS_TO_REMOVE_WITH_SINGLE_ARG: list[str | re.Pattern] = [
     "objc_release",
     # intrinsics
     "__break",
+]
+
+VOID_FUNCTION_TO_REMOVE_WITH_MULTIPLE_ARGS: list[str | re.Pattern] = [
+    # Blocks
+    "__Block_object_dispose"
 ]
 
 # Replace assign(&x, y) with x = y;
@@ -85,7 +91,7 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             return
 
         for optimization in [
-            self.void_function_to_remove_with_single_arg,
+            self.void_function_to_remove,
             self.id_function_to_replace_with_their_arg,
             self.assign_functions,
         ]:
@@ -93,16 +99,21 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             if optimization(name, insn, blk):
                 return
 
-    def void_function_to_remove_with_single_arg(self, name: str, insn: minsn_t, blk: mblock_t) -> bool:
-        if not match(VOID_FUNCTIONS_TO_REMOVE_WITH_SINGLE_ARG, name):
+    def void_function_to_remove(self, name: str, insn: minsn_t, blk: mblock_t) -> bool:
+        if match(VOID_FUNCTIONS_TO_REMOVE_WITH_SINGLE_ARG, name):
+            single_arg = True
+        elif match(VOID_FUNCTION_TO_REMOVE_WITH_MULTIPLE_ARGS, name):
+            single_arg = False
+        else:
             return False
 
         fi: mcallinfo_t = insn.d.f
-        if fi.args.empty():
+        if fi.args.empty() or (single_arg and len(fi.args) != 1):
             # No arguments, probably not optimized yet
+            # Or not matching the number of arguments
             return False
 
-        if fi.args[0].has_side_effects():
+        if any(arg.has_side_effects() for arg in fi.args):
             print("[Error] arguments with side effects are not supported yet!")
             return False
 

@@ -2,7 +2,15 @@ __all__ = ["LvarModification", "perform_lvar_modifications"]
 
 from dataclasses import dataclass
 
-from ida_hexrays import cfunc_t, lvar_saved_info_t, lvar_uservec_t, modify_user_lvars, rename_lvar, user_lvar_modifier_t
+from ida_hexrays import (
+    cfunc_t,
+    lvar_saved_info_t,
+    lvar_uservec_t,
+    lvars_t,
+    modify_user_lvars,
+    rename_lvar,
+    user_lvar_modifier_t,
+)
 from ida_typeinf import tinfo_t
 
 
@@ -52,3 +60,11 @@ def perform_lvar_modifications(func: cfunc_t, modifications: dict[str, LvarModif
             rename_lvar(entry_ea, name, name)
 
     return modify_user_lvars(entry_ea, custom_lvars_modifiers_t(modifications))
+
+
+def get_index(lvars: lvars_t, name: str) -> int:
+    """Get the index of the local variable with the given name."""
+    for i, lvar in enumerate(lvars):
+        if lvar.name == name:
+            return i
+    return -1
