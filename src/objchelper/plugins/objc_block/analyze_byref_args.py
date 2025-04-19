@@ -57,12 +57,13 @@ def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
         assignment = stack_off_to_its_assignment[result.initial_stack_offset]
         set_new_type_for_member(assignment, tif.pointer_of(new_type))
 
-    # Apply new types for the lvars
-    if not lvars.perform_lvar_modifications(func, lvar_modifications):
-        print("[Error] Failed to modify lvars")
+    if lvar_modifications:
+        # Apply new types for the lvars
+        if not lvars.perform_lvar_modifications(func, lvar_modifications):
+            print("[Error] Failed to modify lvars")
 
-    # Finally, refresh the widget
-    widgets.refresh_pseudocode_widgets()
+        # Finally, refresh the widget
+        widgets.refresh_pseudocode_widgets()
 
 
 def set_new_type_for_member(assignment: StructFieldAssignment, new_type: tinfo_t) -> bool:
