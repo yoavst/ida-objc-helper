@@ -1,6 +1,6 @@
 __all__ = ["try_add_block_arg_byref_to_func"]
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import ida_hexrays
@@ -82,6 +82,7 @@ def try_add_block_arg_byref_to_func(func: cfunc_t):
         lvar_changes[block_arg_by_ref_lvar.name] = new_type
 
         # given: a.b = &block_by_ref, set b's type to block_by_ref*
+        # It would not be a cast assign, as the type is already a pointer.
         assignment = by_ref_args_candidates[result.initial_stack_offset]
         set_new_type_for_member(assignment, tif.pointer_of(new_type))
 
@@ -279,7 +280,10 @@ class ScanForRefArg:
 
 
 def get_by_ref_args_for_block_candidates(assignments: list[StructFieldAssignment]) -> dict[int, StructFieldAssignment]:
-    """Filter assignments such that the rvalue is ref to stack variable. Return mapping of var_stack_offset to assignment"""
+    """
+    Filter assignments such that the rvalue is ref to stack variable.
+    Return mapping of var_stack_offset to assignment
+    """
     possible_stack_offsets = {}
     for assignment in assignments:
         # Skip fields that are not args

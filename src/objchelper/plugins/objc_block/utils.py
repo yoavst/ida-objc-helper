@@ -15,10 +15,11 @@ class StructFieldAssignment:
     type: tinfo_t
     member: udm_t
     expr: cexpr_t
+    is_cast_assign: bool
     insn: cinsn_t
 
     def __repr__(self):
-        return f"StructAssignment(member={self.member.name}, expr={self.expr.dstr()}, insn={self.insn.dstr()})"
+        return f"StructAssignment(member={self.member.name}, is_cast_assign={self.is_cast_assign},  expr={self.expr.dstr()}, insn={self.insn.dstr()})"
 
 
 class LvarFieldsAssignmentsCollector(ida_hexrays.ctree_visitor_t):
@@ -36,13 +37,14 @@ class LvarFieldsAssignmentsCollector(ida_hexrays.ctree_visitor_t):
         self.assignments: dict[str, list[StructFieldAssignment]] = {}
 
     def visit_expr(self, exp: cexpr_t) -> int:
-        # We search for "a.b = c;"
+        # We search for "a.b = c;" or "*(_XWORD *)&a.b = c;"
         # Check if the expression is an assignment
         if exp.op != ida_hexrays.cot_asg:
             return 0
 
         # Check if the left side is a member reference
-        target: cexpr_t = exp.x
+        target = remove_ref_cast_dref(exp.x)
+        is_cast_assign = target != exp.x
         if target.op != ida_hexrays.cot_memref:
             return 0
 
@@ -63,9 +65,18 @@ class LvarFieldsAssignmentsCollector(ida_hexrays.ctree_visitor_t):
 
         # Save the assignment
         self.assignments.setdefault(target_obj_lvar.name, []).append(
-            StructFieldAssignment(type=lvar_type, member=member, expr=exp.y, insn=self.parent_insn())
+            StructFieldAssignment(
+                type=lvar_type, member=member, expr=exp.y, insn=self.parent_insn(), is_cast_assign=is_cast_assign
+            )
         )
         return 0
+
+
+def remove_ref_cast_dref(expr: cexpr_t) -> cexpr_t:
+    """Remove reference, cast and dereference from the expression"""
+    while expr.op in (ida_hexrays.cot_ref, ida_hexrays.cot_cast, ida_hexrays.cot_ptr):
+        expr = expr.x
+    return expr
 
 
 def get_struct_fields_assignments(cfunc: cfunc_t, lvars: list[lvar_t]) -> dict[str, list[StructFieldAssignment]]:
