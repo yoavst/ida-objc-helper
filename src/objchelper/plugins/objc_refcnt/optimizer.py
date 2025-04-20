@@ -37,6 +37,7 @@ VOID_FUNCTION_TO_REMOVE_WITH_MULTIPLE_ARGS: list[str | re.Pattern] = [
     # Blocks
     "__Block_object_dispose",
     "_Block_object_dispose",
+    re.compile(r"__Block_object_dispose_(\d+)"),
 ]
 
 # Replace assign(&x, y) with x = y;
