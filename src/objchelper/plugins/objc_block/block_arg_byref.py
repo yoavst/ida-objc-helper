@@ -184,6 +184,8 @@ class BlockByRefArgBaseFieldsAssignments:
                 num_val = expr.numval()
                 self.flags = cexpr.from_const_value(num_val & 0xFF_FF_FF_FF, is_hex=True)
                 self.size = cexpr.from_const_value(num_val >> 32, is_hex=True)
+            else:
+                self.flags = assignment.expr
         elif field_name == "size":
             self.size = assignment.expr
         elif field_name == "byref_keep":

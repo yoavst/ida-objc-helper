@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 from dataclasses import dataclass
-import re
 
 import ida_hexrays
 from ida_hexrays import (
@@ -123,6 +122,8 @@ class BlockBaseFieldsAssignments:
                 num_val = expr.numval()
                 self.flags = cexpr.from_const_value(num_val & 0xFF_FF_FF_FF, is_hex=True)
                 self.reserved = cexpr.from_const_value(num_val >> 32, is_hex=True)
+            else:
+                self.flags = assignment.expr
         elif field_name == "reserved":
             self.reserved = assignment.expr
         elif field_name == "invoke":

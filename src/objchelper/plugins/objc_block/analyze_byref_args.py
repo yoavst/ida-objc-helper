@@ -196,12 +196,12 @@ class ScanForRefArg:
             self._state.flags = mop.from_const_value(flags, 4)
             self._state.size = mop.from_const_value(size, 4)
 
-        if flags & FLAG_BLOCK_HAS_COPY_DISPOSE:
-            self._state.has_helpers = True
-            self._state.current_field = BlockArgByRefField.HELPER_KEEP
-        else:
-            self._state.has_helpers = False
-            self._state.current_field = BlockArgByRefField.VARIABLE
+            if flags & FLAG_BLOCK_HAS_COPY_DISPOSE:
+                self._state.has_helpers = True
+                self._state.current_field = BlockArgByRefField.HELPER_KEEP
+            else:
+                self._state.has_helpers = False
+                self._state.current_field = BlockArgByRefField.VARIABLE
 
     def _size(self, value: mop_t, _offset: int) -> None:
         if value.size != 4:
