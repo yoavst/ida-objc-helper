@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from dataclasses import dataclass
+import re
 
 import ida_hexrays
 from ida_hexrays import (
@@ -52,14 +53,12 @@ def block_member_is_arg_field(udm: udm_t) -> bool:
     return udm.name not in IDA_BLOCK_TYPE_BASE_FIELD_NAMES
 
 
-BLOCK_TYPES = {
-    "__NSConcreteStackBlock": "stack",
-    "__NSConcreteGlobalBlock": "global",
-    "__NSConcreteMallocBlock": "malloc",
-    "__NSConcreteAutoBlock": "auto",
-    "__NSConcreteFinalizingBlock": "finalizing",
-    "_NSConcreteWeakBlockVariable": "weak",
-}
+BLOCK_TYPES: dict[str, str] = {}
+for typ in ["stack", "global", "malloc", "auto", "finalizing", "weak"]:
+    typ_cap = typ.capitalize()
+    BLOCK_TYPES[f"__NSConcrete{typ_cap}Block"] = typ
+    BLOCK_TYPES[f"__NSConcrete{typ_cap}Block_ptr"] = typ
+    BLOCK_TYPES[f"_OBJC_CLASS_$___NS{typ_cap}Block__"] = typ
 
 
 def get_block_type(isa: str) -> str:
