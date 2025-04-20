@@ -20,7 +20,7 @@ class XrefsChoose(Choose):
         Choose.__init__(
             self,
             f"Xrefs to selector: {selector}",
-            [["Address", Choose.CHCOL_EA], ["Name", Choose.CHCOL_FNAME]],
+            [["Address", 10 | Choose.CHCOL_EA], ["Name", 40 | Choose.CHCOL_FNAME]],
             flags=flags | Choose.CH_RESTORE,
             embedded=embedded,
             width=width,
