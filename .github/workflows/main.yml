@@ -1,0 +1,26 @@
+name: CI
+
+on: [ push, pull_request ]
+
+jobs:
+  check-python-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install Vermin
+        run: python -m pip install vermin
+      - name: Check for python version violation
+        run: vermin --config-file vermin.ini --quiet --violations src/
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run ruff formatter over the code
+        uses: astral-sh/ruff-action@v3
