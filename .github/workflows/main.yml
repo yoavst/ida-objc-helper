@@ -17,7 +17,7 @@ jobs:
       - name: Check for python version violation
         run: vermin --config-file vermin.ini --quiet --violations src/
 
-  format:
+  ruff:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

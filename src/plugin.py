@@ -19,8 +19,11 @@ class ObjcHelperPlugin(ReloadablePlugin):
 
 
 def plugin_core_wrapper_factory(*args, **kwargs) -> PluginCore:
+    # Reload the module
     idaapi.require("objchelper.core")
+    # Bring the module into locals
     import objchelper.core
+
     return objchelper.core.plugin_core(*args, **kwargs)
 
 
