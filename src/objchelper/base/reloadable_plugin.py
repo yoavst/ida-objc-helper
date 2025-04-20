@@ -17,6 +17,7 @@ from ida_kernwin import UI_Hooks, action_desc_t
 
 IS_DEBUG = False
 
+
 class Component:
     """
     A component is a self-contained piece of functionality that can be loaded and unloaded independently.
@@ -299,3 +300,33 @@ class UIActionsComponent(Component):
     @staticmethod
     def factory(name: str, action_factories: list[Callable[[PluginCore], UIAction]]) -> ComponentFactory:
         return lambda core: UIActionsComponent(name, core, action_factories)
+
+
+# A common type of component is installing hooks for the decompiler. This is a helper class to make it easier.
+class HexraysHookComponent(Component):
+    def __init__(self, name: str, core: PluginCore, hook_factories: list[Callable[[], ida_hexrays.Hexrays_Hooks]]):
+        super().__init__(name, core)
+        self._hook_factories = hook_factories
+        self._hooks: list[ida_hexrays.Hexrays_Hooks] | None = None
+
+    def load(self):
+        self._hooks = [hook_factory() for hook_factory in self._hook_factories]
+        return True
+
+    def mount(self) -> bool:
+        assert self._hooks is not None, "load() must be called before mount()"
+        for hook in self._hooks:
+            hook.hook()
+        return True
+
+    def unmount(self):
+        if self._hooks is not None:
+            for hook in self._hooks:
+                hook.unhook()
+
+    def unload(self):
+        self._hooks = None
+
+    @staticmethod
+    def factory(name: str, hook_factories: list[Callable[[], ida_hexrays.Hexrays_Hooks]]) -> ComponentFactory:
+        return lambda core: HexraysHookComponent(name, core, hook_factories)
