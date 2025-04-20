@@ -56,6 +56,7 @@ def block_member_is_arg_field(udm: udm_t) -> bool:
 BLOCK_TYPES: dict[str, str] = {}
 for typ in ["stack", "global", "malloc", "auto", "finalizing", "weak"]:
     typ_cap = typ.capitalize()
+    BLOCK_TYPES[f"_NSConcrete{typ_cap}Block"] = typ
     BLOCK_TYPES[f"__NSConcrete{typ_cap}Block"] = typ
     BLOCK_TYPES[f"__NSConcrete{typ_cap}Block_ptr"] = typ
     BLOCK_TYPES[f"_OBJC_CLASS_$___NS{typ_cap}Block__"] = typ
