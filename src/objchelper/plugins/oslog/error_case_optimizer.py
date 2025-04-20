@@ -78,5 +78,4 @@ class log_error_case_optimizer_t(optinsn_t):
 
         if cnt:
             blk.mark_lists_dirty()
-            blk.mba.verify(True)
         return cnt

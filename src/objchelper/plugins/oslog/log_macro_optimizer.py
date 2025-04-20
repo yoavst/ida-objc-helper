@@ -33,7 +33,6 @@ class log_macro_optimizer_t(optblock_counter_t):
 
         if self.cnt:
             blk.mark_lists_dirty()
-            blk.mba.verify(True)
         return self.cnt
 
     def optimize_log_macro(self, blk: mblock_t) -> None:

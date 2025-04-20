@@ -75,5 +75,4 @@ class os_log_enabled_optimizer_t(ida_hexrays.optinsn_t):
         changes = mop_optimizer.cnt
         if changes:
             blk.mark_lists_dirty()
-            blk.mba.verify(True)
         return changes
