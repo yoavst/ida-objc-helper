@@ -1,8 +1,8 @@
 import ida_idaapi
+import idaapi
 from ida_idaapi import plugin_t
 
-from objchelper.base.reloadable_plugin import ReloadablePlugin
-from objchelper.core import plugin_core
+from objchelper.base.reloadable_plugin import PluginCore, ReloadablePlugin
 
 
 class ObjcHelperPlugin(ReloadablePlugin):
@@ -13,7 +13,15 @@ class ObjcHelperPlugin(ReloadablePlugin):
     help = ""
 
     def __init__(self):
-        super().__init__("objchelper", "objchelper", plugin_core)
+        # Use lambda to plugin_core, so it could be fully reloaded from disk every time.
+        # noinspection PyTypeChecker
+        super().__init__("objchelper", "objchelper", plugin_core_wrapper_factory)
+
+
+def plugin_core_wrapper_factory(*args, **kwargs) -> PluginCore:
+    idaapi.require("objchelper.core")
+    import objchelper.core
+    return objchelper.core.plugin_core(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
