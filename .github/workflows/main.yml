@@ -22,5 +22,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Run ruff formatter over the code
+      - name: Ruff check
         uses: astral-sh/ruff-action@v3
+        with:
+          args: check
+      - name: Ruff format check
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check
