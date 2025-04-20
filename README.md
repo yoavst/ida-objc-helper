@@ -1,9 +1,12 @@
 # IDA Objc Helper
+
 A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
 
 ## Supported features
-- Hide memory management functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`. 
-  - Optimize `_objc_storeStrong` to an assignment.
+
+- Hide memory management
+  functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`.
+    - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
 - collapse `__os_log_impl` calls.
 - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection)
@@ -11,15 +14,19 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 
 ## Installation
+
 1. clone the repo.
 2. symlink `src` folder into your IDA Pro plugins folder:
     - on unix: `~/.idapro/plugins/`
     - on windows: `%APPDATA%\Hex-Rays\IDA Pro\plugins`. `mklink /d` command can be used to create a symlink.
-3. Restart IDA. 
+3. Restart IDA.
 
 ## Examples
+
 ### Remove `__break`
+
 Before:
+
 ```c
     if ( ((v6 ^ (2 * v6)) & 0x4000000000000000LL) != 0 )
       __break(0xC471u);
@@ -28,7 +35,9 @@ Before:
 After: removed.
 
 ### Hide selectors of Obj-C calls
+
 Before:
+
 ```c
    -[NSFileManager removeItemAtPath:error:](
       +[NSFileManager defaultManager](&OBJC_CLASS___NSFileManager, "defaultManager"),
@@ -38,6 +47,7 @@ Before:
 ```
 
 After:
+
 ```c
    -[NSFileManager removeItemAtPath:error:](
       +[NSFileManager defaultManager](),
@@ -46,7 +56,9 @@ After:
 ```
 
 ### Block initializers
+
 Before:
+
 ```c
 v10 = 0LL;
 v15 = &v10;
@@ -75,6 +87,7 @@ return v11 & 1;
 ```
 
 After:
+
 ```c
 v10 = _byref_block_arg_init(0);
 v10.value = 0;
@@ -97,6 +110,7 @@ return value & 1;
 ```
 
 ### Collapse `os_log`
+
 Before:
 
 ```c
@@ -151,6 +165,7 @@ Before:
 ```
 
 after:
+
 ```c
   if ( oslog_info_enabled() )
   {
@@ -163,8 +178,12 @@ after:
 ```
 
 ## Development
-In order to have autocomplete while developing, you need to add IDA's include folder ( `$IDA_INSTALLATION/python/3` ) to your IDE.
+
+In order to have autocomplete while developing, you need to add IDA's include folder ( `$IDA_INSTALLATION/python/3` ) to
+your IDE.
+
 - on Visual Studio code you can add the folder to the analyzer's extra paths in the `settings.json` file:
+
 ```json
 {
   "python.analysis.extraPaths": [
@@ -172,7 +191,10 @@ In order to have autocomplete while developing, you need to add IDA's include fo
   ]
 }
 ```
-- on PyCharm you can add the folder to the interpreter's paths in the project settings. 
+
+- on PyCharm you can add the folder to the interpreter's paths in the project settings.
   Alternatively, you can create `idapython.pth` in `$VENV_FOLDER/Lib/site-packages` and add the path to it.
 
 Inside IDA, you can use `objchelper.reload()` to reload the plugin during development.
+If you modify `IS_DEBUG = True` inside `src/objchelper/base/reloadable_plugin.py`, then you can use `F2` to reload the
+plugin.
