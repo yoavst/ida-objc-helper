@@ -49,7 +49,7 @@ class log_macro_optimizer_t(optblock_counter_t):
         # All instructions up to the call are part of the logging macro starting from `from_index`,
         # so they can be safely removed.
         # First, convert the call insn to the helper call
-        prefix = "ossignpost_" if params.is_signpost else "os_log"
+        prefix = "ossignpost_" if params.is_signpost else "os_log_"
         call_insn.l.make_helper(f"{prefix}{os_log.log_type_to_str(params.log_type, params.is_signpost)}")
         self.count()
 

@@ -23,7 +23,7 @@ OSLOG_FUNCTIONS_TO_REPLACE_WITH_HELPER: list[str | re.Pattern] = [
 OSLOG_TYPE_INDEX = 1
 
 SIGNPOST_FUNCTIONS_TO_REPLACE_WITH_HELPER: list[str | re.Pattern] = [
-    "_os_signpost_enabled_",
+    "_os_signpost_enabled",
     re.compile(r"_os_signpost_enabled_(\d+)"),
 ]
 

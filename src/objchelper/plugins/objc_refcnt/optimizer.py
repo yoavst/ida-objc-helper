@@ -32,6 +32,9 @@ VOID_FUNCTIONS_TO_REMOVE_WITH_SINGLE_ARG: list[str | re.Pattern] = [
     "objc_release",
     # intrinsics
     "__break",
+    # CFoundation
+    "_CFRelease",
+    re.compile(r"_CFRelease_(\d+)"),
 ]
 
 VOID_FUNCTION_TO_REMOVE_WITH_MULTIPLE_ARGS: list[str | re.Pattern] = [
