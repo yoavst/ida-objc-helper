@@ -11,14 +11,18 @@ from objchelper.idahelper.microcode import mop
 # Replace var with val
 VARIABLES_TO_OPTIMIZE_OUT: dict[str | re.Pattern, int] = {
     "_gNumLogObjects": 0x1000,
+    re.compile(r"_gNumLogObjects_(\d+)"): 0x1000,
     "_gNumLogSignpostObjects": 0x1000,
+    re.compile(r"_gNumLogSignpostObjects_(\d+)"): 0x1000,
 }
 
 # replace jz var, 0, #addr with goto/nop
 # bool is "isZero"
 JZ_TO_OPTIMIZE: dict[str | re.Pattern, bool] = {
     "_gLogObjects": False,
+    re.compile(r"_gLogObjects_(\d+)"): False,
     "_gLogSignpostObjects": False,
+    re.compile(r"_gLogSignpostObjects_(\d+)"): False,
 }
 
 

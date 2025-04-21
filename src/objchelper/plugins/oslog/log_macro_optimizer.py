@@ -49,7 +49,8 @@ class log_macro_optimizer_t(optblock_counter_t):
         # All instructions up to the call are part of the logging macro starting from `from_index`,
         # so they can be safely removed.
         # First, convert the call insn to the helper call
-        call_insn.l.make_helper(f"oslog_{os_log.log_type_to_str(params.log_type)}")
+        prefix = "ossignpost_" if params.is_signpost else "os_log"
+        call_insn.l.make_helper(f"{prefix}{os_log.log_type_to_str(params.log_type, params.is_signpost)}")
         self.count()
 
         # Then modify callinfo
@@ -60,10 +61,17 @@ class log_macro_optimizer_t(optblock_counter_t):
         fi.solid_args = 0
         self.count()
 
+        # Add optional name string argument
+        if params.name_str_ea is not None:
+            new_arg = mcallarg.from_mop(mop.from_global_ref(params.name_str_ea), tif.from_c_type("char*"))
+            fi.args.push_back(new_arg)
+            fi.solid_args += 1
+            self.count()
+
         # Add format string argument
         new_arg = mcallarg.from_mop(mop.from_global_ref(params.format_str_ea), tif.from_c_type("char*"))
         fi.args.push_back(new_arg)
-        fi.solid_args = 1
+        fi.solid_args += 1
         self.count()
 
         # Add params
@@ -198,24 +206,28 @@ class log_macro_optimizer_t(optblock_counter_t):
         buf_param = call_info.args[log_call_info.buf_index]
         format_param = call_info.args[log_call_info.format_index]
         type_param = call_info.args[log_call_info.type_index]
-
+        name_param = call_info.args[log_call_info.name_index] if log_call_info.name_index is not None else None
         # Verify types of operands
         if (
             size_param.t != ida_hexrays.mop_n
             or type_param.t != ida_hexrays.mop_n
             or not format_param.is_glbaddr()
             or buf_param.t != ida_hexrays.mop_a
+            or (name_param is not None and not name_param.is_glbaddr())
         ):
             return None
 
         size = size_param.unsigned_value()
         log_type = type_param.unsigned_value()
         format_str_ea = format_param.a.g
+        name_str_ea = name_param.a.g if name_param is not None else None
         # Check if this is a stack variable
         if buf_param.a.t != ida_hexrays.mop_S:
             return None
         stack_base_offset = buf_param.a.s.off
-        return LogCallParams(log_type, size, stack_base_offset, format_str_ea, insn.ea)
+        return LogCallParams(
+            log_type, size, stack_base_offset, format_str_ea, insn.ea, name_str_ea, log_call_info.is_signpost
+        )
 
 
 def optimizer() -> optblock_t:

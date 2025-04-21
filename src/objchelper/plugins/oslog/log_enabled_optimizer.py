@@ -16,12 +16,16 @@ from objchelper.idahelper.microcode import minsn
 
 from . import os_log
 
-FUNCTIONS_TO_REPLACE_WITH_HELPER: list[str | re.Pattern] = [
+OSLOG_FUNCTIONS_TO_REPLACE_WITH_HELPER: list[str | re.Pattern] = [
     "_os_log_type_enabled",
     re.compile(r"_os_log_type_enabled_(\d+)"),
 ]
+OSLOG_TYPE_INDEX = 1
 
-LOG_TYPE_INDEX = 1
+SIGNPOST_FUNCTIONS_TO_REPLACE_WITH_HELPER: list[str | re.Pattern] = [
+    "_os_signpost_enabled_",
+    re.compile(r"_os_signpost_enabled_(\d+)"),
+]
 
 
 class mop_optimizer_t(mop_visitor_t, CounterMixin):
@@ -43,20 +47,30 @@ class mop_optimizer_t(mop_visitor_t, CounterMixin):
             return
 
         # If it should be optimized to first arg, optimize
-        if match(FUNCTIONS_TO_REPLACE_WITH_HELPER, name):
+        if match(OSLOG_FUNCTIONS_TO_REPLACE_WITH_HELPER, name):
             fi: mcallinfo_t = insn.d.f
             if fi.args.empty():
                 # No arguments, probably IDA have not optimized it yet
                 return
 
             # Log type
-            log_type_arg = fi.args[LOG_TYPE_INDEX]
+            log_type_arg = fi.args[OSLOG_TYPE_INDEX]
             if log_type_arg.t != ida_hexrays.mop_n:
                 return
             log_type = log_type_arg.unsigned_value()
 
             # Change name
-            insn.l.make_helper(f"oslog_{os_log.log_type_to_str(log_type)}_enabled")
+            insn.l.make_helper(f"oslog_{os_log.log_type_to_str(log_type, is_signpost=False)}_enabled")
+            self.count()
+            # Remove arguments
+            fi.args.clear()
+            fi.solid_args = 0
+            self.count()
+        elif match(SIGNPOST_FUNCTIONS_TO_REPLACE_WITH_HELPER, name):
+            fi: mcallinfo_t = insn.d.f
+
+            # Change name
+            insn.l.make_helper(f"ossignpost_enabled")
             self.count()
             # Remove arguments
             fi.args.clear()
