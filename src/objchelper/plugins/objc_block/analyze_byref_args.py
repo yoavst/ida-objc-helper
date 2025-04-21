@@ -42,8 +42,10 @@ def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
         if lvar.name not in assignments:
             print(f"[Error] Block variable {lvar.name} has no assignments")
             continue
-
         stack_off_to_its_assignment.update(get_by_ref_args_for_block_candidates(assignments[lvar.name]))
+
+    if not stack_off_to_its_assignment:
+        return
 
     # scan the microcode using the offsets to see if any of them is a start of a by ref arg struct.
     lvar_modifications: dict[str, LvarModification] = {}  # lvar_name -> type_modification
@@ -157,7 +159,12 @@ class ScanForRefArg:
         self._state_handlers[self._state.current_field](insn.l, offset)
 
     def _isa(self, value: mop_t, offset: int) -> None:
-        if offset not in self._possible_stack_offsets or value.size != 8:
+        if (
+            offset not in self._possible_stack_offsets
+            or value.size != 8
+            or value.t != ida_hexrays.mop_n
+            or value.unsigned_value() != 0
+        ):
             self._state = ScanForBlockArgByRefState.initial()
             return
 
@@ -259,19 +266,28 @@ def get_by_ref_args_for_block_candidates(assignments: list[StructFieldAssignment
         # Skip fields that are not args
         if not block_member_is_arg_field(assignment.member):
             continue
-        # Find assignments that are refs to the stack: "block.lvar2 = &v8
+        # Find assignments that are refs to the stack: "block.lvar2 = &v8" or, "block.lvar2 = v8" (and v8 is array type)
         expr = cexpr.strip_casts(assignment.expr)
-        if expr.op != ida_hexrays.cot_ref:
-            continue
-        refed_expr: cexpr_t = expr.x
-        if refed_expr.op != ida_hexrays.cot_var:
-            continue
-        # Check if the variable is not already handled
-        if is_block_arg_byref_type(refed_expr.v.getv().type()):
-            continue
-        # Return the stack offset of the variable
-        stack_offset: int = refed_expr.v.getv().get_stkoff()
-        if stack_offset == -1:
-            continue
-        possible_stack_offsets[stack_offset] = assignment
+        # block.lvar2 = &v8
+        if expr.op == ida_hexrays.cot_ref:
+            refed_expr: cexpr_t = expr.x
+            if refed_expr.op != ida_hexrays.cot_var:
+                continue
+            # Check if the variable is not already handled
+            if is_block_arg_byref_type(refed_expr.v.getv().type()):
+                continue
+            # Return the stack offset of the variable
+            stack_offset: int = refed_expr.v.getv().get_stkoff()
+        # block.lvar2 = v8 (and v8 is array type)
+        elif expr.op == ida_hexrays.cot_var:
+            # The variable could not have been handled, as it should be a ref in this case
+            # Check it is an array type, as this is the only situation I can think of that
+            # will represent a byref arg block and will not be a ref.
+            if not expr.v.getv().type().is_array():
+                continue
+            stack_offset: int = expr.v.getv().get_stkoff()
+
+        if stack_offset != -1:
+            possible_stack_offsets[stack_offset] = assignment
+
     return possible_stack_offsets
