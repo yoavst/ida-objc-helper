@@ -165,6 +165,7 @@ class log_macro_optimizer_t(optblock_counter_t):
             ida_hexrays.m_and,
             ida_hexrays.m_xds,
             ida_hexrays.m_xdu,
+            ida_hexrays.m_low,
         ]:
             if print_error:
                 print(f"[Error] unsupported instruction in log block of {hex(call_ea)}: {insn.dstr()}")

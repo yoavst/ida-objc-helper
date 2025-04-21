@@ -23,6 +23,7 @@ ID_FUNCTIONS_TO_REPLACE_WITH_ARG: list[str | re.Pattern] = [
     "_objc_claimAutoreleasedReturnValue",
     re.compile(r"_objc_claimAutoreleasedReturnValue_(\d+)"),
     "_objc_retainBlock",
+    "objc_unsafeClaimAutoreleasedReturnValue",
 ]
 
 # Remove f(x) calls
