@@ -12,6 +12,7 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
 - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection)
 - Hide selectors and static classes from Objective-c calls.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
+- When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for Obj-C instance methods.
 
 ## Installation
 

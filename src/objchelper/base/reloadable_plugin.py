@@ -265,6 +265,18 @@ class UIAction:
     id: str
     action_desc: action_desc_t
     menu_location: str | None = None
+    dynamic_menu_add: Callable[["TWidget *", "TPopupMenu *"], bool] | None = None  # noqa: F722
+
+
+class UIActionsComponentUIHooks(idaapi.UI_Hooks):
+    def __init__(self, actions: list[UIAction]):
+        super().__init__()
+        self._actions = actions
+
+    def finish_populating_widget_popup(self, widget, popup):
+        for action in self._actions:
+            if action.dynamic_menu_add is not None and action.dynamic_menu_add(widget, popup):
+                idaapi.attach_action_to_popup(widget, popup, action.id)
 
 
 # Another common type of component is installing ui actions. This is a helper class to make it easier.
@@ -273,9 +285,15 @@ class UIActionsComponent(Component):
         super().__init__(name, core)
         self._action_factories = action_factories
         self._actions: list[UIAction] | None = None
+        self._ui_hooks: UI_Hooks | None = None
 
     def load(self) -> bool:
         self._actions = [factory(self.core) for factory in self._action_factories]
+        if any(action.dynamic_menu_add is not None for action in self._actions):
+            # Create a UI_Hooks instance to attach the dynamic menu
+            self._ui_hooks = UIActionsComponentUIHooks(self._actions)
+            self._ui_hooks.hook()
+
         for action in self._actions:
             if not idaapi.register_action(action.action_desc):
                 print(f"[{self.name}] failed to register action {action.id}, aborting load.")
@@ -296,6 +314,9 @@ class UIActionsComponent(Component):
     def unload(self):
         for action in self._actions:
             idaapi.unregister_action(action.id)
+
+        if self._ui_hooks is not None:
+            self._ui_hooks.unhook()
 
     @staticmethod
     def factory(name: str, action_factories: list[Callable[[PluginCore], UIAction]]) -> ComponentFactory:

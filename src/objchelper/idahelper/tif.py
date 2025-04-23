@@ -2,7 +2,9 @@ import dataclasses
 
 import ida_hexrays
 import ida_typeinf
-from ida_typeinf import tinfo_t, udm_t, udt_type_data_t
+import idaapi
+from ida_funcs import func_t
+from ida_typeinf import func_type_data_t, tinfo_t, udm_t, udt_type_data_t
 
 
 def from_c_type(c_type: str) -> tinfo_t | None:
@@ -45,9 +47,41 @@ def from_size(size: int) -> tinfo_t | None:
 def from_struct_name(name: str) -> tinfo_t | None:
     """Given a struct name, return matching `tinfo_t`"""
     tif = tinfo_t()
-    if not tif.get_named_type(ida_typeinf.get_idati(), name, ida_typeinf.BTF_STRUCT, True, False):
+    if not tif.get_named_type(ida_typeinf.get_idati(), name, ida_typeinf.BTF_TYPEDEF, True, False):
         return None
     return tif
+
+
+def from_func(func: func_t) -> tinfo_t | None:
+    """Given a function, return matching `tinfo_t`"""
+    tif = tinfo_t()
+    if idaapi.get_tinfo(tif, func.start_ea):
+        return tif
+
+
+def get_func_details(func: func_t | tinfo_t) -> func_type_data_t | None:
+    """Given a function, return its type details"""
+    # Convert to tif
+    if isinstance(func, func_t):
+        func = from_func(func)
+        if func is None:
+            return None
+
+    func_type = func_type_data_t()
+    if func.get_func_details(func_type):
+        return func_type
+
+
+def from_func_details(details: func_type_data_t) -> tinfo_t | None:
+    """Given a function type details, return matching `tinfo_t`"""
+    tif = tinfo_t()
+    if tif.create_func(details):
+        return tif
+
+
+def apply_tinfo(tif: tinfo_t, func: func_t) -> bool:
+    """Apply typing info to the given function`"""
+    return idaapi.apply_tinfo(func.start_ea, tif, idaapi.TINFO_DEFINITE)
 
 
 @dataclasses.dataclass
@@ -56,7 +90,7 @@ class FuncParam:
     name: str | None = None
 
 
-def from_func(return_type: str, parameters: list[FuncParam]) -> tinfo_t | None:
+def from_func_components(return_type: str, parameters: list[FuncParam]) -> tinfo_t | None:
     """Create a tif from return type and list of parameters"""
     params_str = ",".join(f"{p.type} {p.name or ''}" for p in parameters)
     sig = f"{return_type} f({params_str})"

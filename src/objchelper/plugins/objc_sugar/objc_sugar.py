@@ -18,6 +18,7 @@ from ida_lines import (
 )
 from ida_pro import strvec_t
 
+from objchelper.idahelper import objc
 from objchelper.idahelper.ast import cexpr
 
 SELECTOR_MARKER = "!@#$sel$#@!"
@@ -67,16 +68,6 @@ Its groups are: index, index2, class and postfix.
 """
 
 
-def is_objc_method(name: str) -> bool:
-    """Does the name look like an Obj-C method?"""
-    return len(name) > 3 and name[0] in ["-", "+"] and name[1] == "[" and name[-1] == "]"
-
-
-def is_objc_static_method(name: str) -> bool:
-    """Given obj-C method name, check if it is a static method."""
-    return name[0] == "+"
-
-
 class objc_selector_hexrays_hooks_t(Hexrays_Hooks):
     def func_printed(self, cfunc: cfunc_t) -> int:  # noqa: C901
         selectors_to_remove: dict[int, str] = {}  # obj_id -> selector
@@ -98,7 +89,7 @@ class objc_selector_hexrays_hooks_t(Hexrays_Hooks):
 
                 # 1. Check if the function name looks like an Obj-C method
                 call_func_name = cexpr.get_call_name(call_expr)
-                if call_func_name is None or not is_objc_method(call_func_name):
+                if call_func_name is None or not objc.is_objc_method(call_func_name):
                     continue
 
                 # 2. Collect selector from arglist
@@ -113,7 +104,7 @@ class objc_selector_hexrays_hooks_t(Hexrays_Hooks):
                 selectors_to_remove[sel_arg.obj_id] = sel_arg.string
 
                 # 3. Check if the function is a class method
-                if is_objc_static_method(call_func_name):
+                if objc.is_objc_static_method(call_func_name):
                     # 4. Check if the class name is a ref to obj
                     class_arg: carg_t = arglist[0]
                     if class_arg.op != ida_hexrays.cot_ref or class_arg.x.op != ida_hexrays.cot_obj:

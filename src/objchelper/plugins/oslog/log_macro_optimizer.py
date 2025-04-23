@@ -14,7 +14,7 @@ from objchelper.plugins.oslog.os_log import LogCallInfo, LogCallParams
 
 def log_func_to_tif() -> tinfo_t | None:
     """Create tif for a log function: void f(char *fmt, ...)"""
-    return tif.from_func("void", [tif.FuncParam("char*", "fmt"), tif.FuncParam("...")])
+    return tif.from_func_components("void", [tif.FuncParam("char*", "fmt"), tif.FuncParam("...")])
 
 
 class ScanLogState(Enum):
