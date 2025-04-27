@@ -123,7 +123,7 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             print("[Error] arguments with side effects are not supported yet!")
             return False
 
-        if self.topins != insn:
+        if not fi.return_type or not fi.return_type.is_void():
             # embedded instruction, the result can be assigned to something.
             print(f'[Error] Cannot remove {name} as this is an embedded instruction. Is the return type correct? it should be void.')
             return False
