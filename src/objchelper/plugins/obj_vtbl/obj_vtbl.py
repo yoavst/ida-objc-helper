@@ -48,10 +48,11 @@ def show_vtable_xrefs():
     vtable_call = get_vtable_call(verbose=True)
     if vtable_call is None:
         return
-    vtable_type, call_name, offset = vtable_call
 
+    vtable_type, call_name, offset = vtable_call
     actual_type = get_actual_class_from_vtable(vtable_type)
     relevant_classes = [actual_type, *tif.get_children_classes(actual_type)]
+    pure_virtual_ea = memory.ea_from_name("___cxa_pure_virtual") or memory.ea_from_name("__cxa_pure_virtual")
     # noinspection PyTypeChecker
     matches: dict[int, str] = {}  # addr -> class_name
     for cls in relevant_classes:
@@ -63,7 +64,7 @@ def show_vtable_xrefs():
         # Read the func at the relevant offset
         vtable_entry = vtable_ea + (2 * 8 + offset)
         vtable_func_ea = memory.qword_from_ea(vtable_entry)
-        if ida_funcs.get_func(vtable_func_ea) is None:
+        if pure_virtual_ea == vtable_func_ea or ida_funcs.get_func(vtable_func_ea) is None:
             continue
 
         # Add it to the dict if not already present.
