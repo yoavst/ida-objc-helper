@@ -14,7 +14,8 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 - When the keyboard is on a virtual call (`cls->vcall()`), Shift+X will show a dialog with all the possible
   implementations of the virtual method. It requires vtable symbols to be present.
-- When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for Obj-C instance methods.
+- When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for Obj-C
+  instance methods.
 
 ## Installation
 
@@ -179,6 +180,18 @@ after:
     oslog_info("Random log %@", v4);
   }
 ```
+
+## Jump to virtual call
+
+Use `Shift+X` on a virtual call to jump.
+
+![Jump to virtual call](res/jump_to_virtual_call.png)
+
+## Xrefs to selector
+
+Use `Ctrl+4` inside an Objective-C method to list xrefs to its selector.
+
+![Jump to selector](res/jump_to_selector_xrefs.png)
 
 ## Development
 
