@@ -2,7 +2,9 @@ import dataclasses
 
 import ida_hexrays
 import ida_typeinf
+import ida_xref
 import idaapi
+import idautils
 from ida_funcs import func_t
 from ida_typeinf import func_type_data_t, tinfo_t, udm_t, udt_type_data_t
 
@@ -102,6 +104,18 @@ def pointer_of(tif: tinfo_t) -> tinfo_t:
     return ida_hexrays.make_pointer(tif)
 
 
+def get_udt(tif: tinfo_t) -> udt_type_data_t | None:
+    """Get udt from tif"""
+    if not tif.is_struct():
+        print("Not a struct type!")
+        return None
+
+    udt_data = udt_type_data_t()
+    if not tif.get_udt_details(udt_data):
+        return None
+    return udt_data
+
+
 def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
     """Get member of a struct at given offset"""
     if not tif.is_struct():
@@ -118,6 +132,59 @@ def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
         return None
 
     return udm
+
+
+def get_parent_classes(tif: tinfo_t) -> list[tinfo_t] | None:
+    """Get parent classes of a struct."""
+    if not tif.is_struct():
+        return None
+
+    udt_data = get_udt(tif)
+    if udt_data is None:
+        return None
+
+    if not udt_data.is_cppobj():
+        return None
+
+    classes = []
+    for udm in udt_data:
+        if udm.is_baseclass():
+            # Copy the type as it somehow got freed...
+            parent_type: tinfo_t = tinfo_t(udm.type)
+            classes.append(parent_type)
+            classes.extend(get_parent_classes(parent_type))
+
+    return classes
+
+
+def get_children_classes(tif: tinfo_t) -> list[tinfo_t] | None:
+    """Get child classes of a struct."""
+    if not tif.is_struct():
+        return None
+
+    tid = tif.get_tid()
+    children = []
+    for xref in idautils.XrefsTo(tid, ida_xref.XREF_DATA):
+        name = ida_typeinf.get_tid_name(xref.frm)
+        if name and ".baseclass_" in name:
+            cls_name = name.split(".baseclass_")[0]
+            cls = from_struct_name(cls_name)
+            if cls is not None:
+                children.append(cls)
+                children.extend(get_children_classes(cls))
+    return children
+
+
+def vtable_type_from_type(tif: tinfo_t) -> tinfo_t | None:
+    """Get vtable for a class"""
+    if not tif.is_struct():
+        return None
+
+    if not tif.has_vftable():
+        return None
+
+    # noinspection PyTypeChecker
+    return from_struct_name(tif.get_type_name() + "_vtbl")
 
 
 def set_udm_type(tif: tinfo_t, udm: udm_t, udm_type: tinfo_t) -> bool:

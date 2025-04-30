@@ -6,6 +6,7 @@ import idaapi
 from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
 from .idahelper import widgets
 from .plugins.obj_this import this_arg_fixer_component
+from .plugins.obj_vtbl import jump_to_vtable_component
 from .plugins.objc_block import objc_block_args_analyzer_component, objc_block_optimizer_component
 from .plugins.objc_ref import objc_xrefs_component
 from .plugins.objc_refcnt import component as objc_refcount_component
@@ -62,5 +63,6 @@ plugin_core = PluginCore.factory(
         objc_block_args_analyzer_component,
         objc_block_optimizer_component,
         this_arg_fixer_component,
+        jump_to_vtable_component,
     ],
 )

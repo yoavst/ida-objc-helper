@@ -37,7 +37,6 @@ def update_argument(func: func_t) -> bool:
 
     # Change first argument name and type
     class_tinfo = tif.from_struct_name(class_name)
-    print(func_details.dump())
     if class_tinfo is None:
         print(f"[Error] Failed to get class type info for {class_name}")
         return False
