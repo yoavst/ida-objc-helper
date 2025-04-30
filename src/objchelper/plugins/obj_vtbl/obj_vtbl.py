@@ -51,20 +51,18 @@ def show_vtable_xrefs():
 
     vtable_type, call_name, offset = vtable_call
     actual_type = get_actual_class_from_vtable(vtable_type)
-    relevant_classes = [actual_type, *tif.get_children_classes(actual_type)]
+    relevant_classes = tif.get_children_classes(actual_type)
     pure_virtual_ea = memory.ea_from_name("___cxa_pure_virtual") or memory.ea_from_name("__cxa_pure_virtual")
     # noinspection PyTypeChecker
     matches: dict[int, str] = {}  # addr -> class_name
-    for cls in relevant_classes:
-        # Get vtable location in memory
-        vtable_ea = cpp.vtable_location_from_type(cls)
-        if vtable_ea is None:
-            continue
 
-        # Read the func at the relevant offset
-        vtable_entry = vtable_ea + (2 * 8 + offset)
-        vtable_func_ea = memory.qword_from_ea(vtable_entry)
-        if pure_virtual_ea == vtable_func_ea or ida_funcs.get_func(vtable_func_ea) is None:
+    parent_impl = get_impl_from_parent(actual_type, offset, pure_virtual_ea)
+    if parent_impl is not None:
+        matches[parent_impl[0]] = parent_impl[1]
+
+    for cls in relevant_classes:
+        vtable_func_ea = get_vtable_entry(cls, offset, pure_virtual_ea)
+        if vtable_func_ea is None:
             continue
 
         # Add it to the dict if not already present.
@@ -92,6 +90,59 @@ def show_vtable_xrefs():
             modal=True,
         )
         xrefs_choose.show()
+
+
+def get_impl_from_parent(cls: tinfo_t, offset: int, pure_virtual_ea: int) -> tuple[int, str] | None:
+    """
+    Given a class and an offset to vtable entry, Iterate over its parents to find what will be the implementation
+    for the given offset. If no implementation is found, return None.
+    """
+    impl, impl_cls = get_vtable_entry(cls, offset, pure_virtual_ea), cls.get_type_name()
+    if impl is None:
+        # If not implemented in this class, will not be implemented in its parents.
+        return None
+    for parent_cls in tif.get_parent_classes(cls):
+        if offset >= get_vtable_size(parent_cls) * 8:
+            # If offset is greater than the size of the vtable, the method was defined in child class
+            break
+        this_impl = get_vtable_entry(parent_cls, offset, pure_virtual_ea)
+        if this_impl is None or impl != this_impl:
+            break
+        else:
+            impl_cls = parent_cls.get_type_name()
+
+    return impl, f"{impl_cls} (Slot at {cls.get_type_name()})"
+
+
+def get_vtable_size(cls: tinfo_t) -> int:
+    """Given a class, return the number of entries in it."""
+    vtable_ea = cpp.vtable_location_from_type(cls)
+    if vtable_ea is None:
+        return -1
+
+    current_ea = vtable_ea + 2 * 8
+    i = 0
+    while memory.qword_from_ea(current_ea) != 0:
+        i += 1
+        current_ea += 8
+    return i
+
+
+def get_vtable_entry(cls: tinfo_t, offset: int, pure_virtual_ea: int) -> int | None:
+    """Given a class and an offset to vtable entry, return the ea of the function at the given offset
+    if it is not a pure virtual one."""
+    # Get vtable location in memory
+    vtable_ea = cpp.vtable_location_from_type(cls)
+    if vtable_ea is None:
+        return None
+
+    # Read the func at the relevant offset
+    vtable_entry = vtable_ea + (2 * 8 + offset)
+    vtable_func_ea = memory.qword_from_ea(vtable_entry)
+    if pure_virtual_ea == vtable_func_ea or ida_funcs.get_func(vtable_func_ea) is None:
+        return None
+
+    return vtable_func_ea
 
 
 def get_actual_class_from_vtable(vtable_type: tinfo_t) -> tinfo_t | None:
