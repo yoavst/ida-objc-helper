@@ -105,6 +105,7 @@ class log_macro_optimizer_t(optblock_counter_t):
         call_params: list[mop_t] = []
         buffer_instructions: list[minsn_t] = []
         buffer_size = 0
+        size_left_for_header: int | None = None
         state = ScanLogState.HEADER
 
         for insn in mblock.instructions(blk):
@@ -129,7 +130,20 @@ class log_macro_optimizer_t(optblock_counter_t):
                     print(f"[Error] invalid log macro header size of {hex(params.call_ea)}: {insn.dstr()}")
                     return None
             elif state == ScanLogState.ITEM_HEADER:
-                state = ScanLogState.ITEM_VALUE
+                if insn.d.size != 2:
+                    if insn.d.size > 2:
+                        print(
+                            f"[Error] Unsupported log macro because header size is bigger than 2 bytes: {insn.dstr()}")
+                        return None
+                    elif size_left_for_header is None:
+                        size_left_for_header = 2 - insn.d.size
+                    else:
+                        size_left_for_header -= insn.d.size
+                        if size_left_for_header == 0:
+                            state = ScanLogState.ITEM_VALUE
+                            size_left_for_header = None
+                else:
+                    state = ScanLogState.ITEM_VALUE
             else:
                 call_params.append(insn.l)
                 state = ScanLogState.ITEM_HEADER
@@ -171,7 +185,7 @@ class log_macro_optimizer_t(optblock_counter_t):
         return None
 
     def check_insn_part_of_log_macro(
-        self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool = False
+            self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool = False
     ) -> bool:
         """Check that the given `insn` is indeed part of a log macro"""
         # It is an Assignment
@@ -216,11 +230,11 @@ class log_macro_optimizer_t(optblock_counter_t):
         name_param = call_info.args[log_call_info.name_index] if log_call_info.name_index is not None else None
         # Verify types of operands
         if (
-            size_param.t != ida_hexrays.mop_n
-            or type_param.t != ida_hexrays.mop_n
-            or not format_param.is_glbaddr()
-            or buf_param.t != ida_hexrays.mop_a
-            or (name_param is not None and not name_param.is_glbaddr())
+                size_param.t != ida_hexrays.mop_n
+                or type_param.t != ida_hexrays.mop_n
+                or not format_param.is_glbaddr()
+                or buf_param.t != ida_hexrays.mop_a
+                or (name_param is not None and not name_param.is_glbaddr())
         ):
             return None
 
