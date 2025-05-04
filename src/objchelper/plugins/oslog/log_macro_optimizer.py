@@ -134,7 +134,7 @@ class log_macro_optimizer_t(optblock_counter_t):
                 call_params.append(insn.l)
                 state = ScanLogState.ITEM_HEADER
 
-            buffer_size += insn.l.size
+            buffer_size += insn.d.size
 
         if state == ScanLogState.HEADER:
             # Never found the beginning of the log macro
