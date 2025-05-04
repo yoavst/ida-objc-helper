@@ -30,7 +30,7 @@ def get_vtable_call(verbose: bool = False) -> tuple[tinfo_t, str, int] | None:
         return None
 
     tp: tinfo_t = expr.type
-    if not tp.is_funcptr():
+    if not tp.is_funcptr() and not tp.is_func():
         if verbose:
             print(
                 f"[Error] Current member is not a function pointer: {citem.dstr()}. Do you have your cursor on a virtual call?"
