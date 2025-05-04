@@ -1,5 +1,5 @@
+import dataclasses
 from enum import Enum
-from itertools import islice
 
 import ida_hexrays
 from ida_hexrays import mblock_t, mcallinfo_t, minsn_t, mop_t, optblock_t
@@ -23,6 +23,12 @@ class ScanLogState(Enum):
     ITEM_VALUE = 2
 
 
+@dataclasses.dataclass
+class CollectLogParamsResult:
+    instructions: list[minsn_t]
+    call_params: list[mop_t]
+
+
 # noinspection PyMethodMayBeStatic
 class log_macro_optimizer_t(optblock_counter_t):
     def func(self, blk: mblock_t) -> int:
@@ -42,9 +48,9 @@ class log_macro_optimizer_t(optblock_counter_t):
         call_insn, params = res
 
         # Collect parameters to log
-        if (res2 := self.collect_log_params(blk, params)) is None:
+        log_params_res = self.collect_log_params(blk, params)
+        if log_params_res is None:
             return
-        from_index, call_params = res2
 
         # All instructions up to the call are part of the logging macro starting from `from_index`,
         # so they can be safely removed.
@@ -75,7 +81,7 @@ class log_macro_optimizer_t(optblock_counter_t):
         self.count()
 
         # Add params
-        for param in call_params:
+        for param in log_params_res.call_params:
             fi.args.push_back(mcallarg.from_mop(param, tif.from_size(param.size)))
             fi.solid_args += 1
             self.count()
@@ -85,15 +91,11 @@ class log_macro_optimizer_t(optblock_counter_t):
         self.count()
 
         # Finally, convert other instructions (that are part of the log macro) to nop
-        for insn in islice(mblock.instructions(blk), from_index, None):
-            # Stop at the call
-            if insn.ea == params.call_ea:
-                break
-
+        for insn in log_params_res.instructions:
             blk.make_nop(insn)
             self.count()
 
-    def collect_log_params(self, blk: mblock_t, params: LogCallParams) -> tuple[int, list[mop_t]] | None:  # noqa: C901
+    def collect_log_params(self, blk: mblock_t, params: LogCallParams) -> CollectLogParamsResult | None:  # noqa: C901
         """
         Collect the parameters of a log macro starting from `params.call_ea` and going backwards.
         Returns the index of the first instruction that is a part of the macro and the list of parameters.
@@ -101,24 +103,19 @@ class log_macro_optimizer_t(optblock_counter_t):
         base = params.stack_base_offset
         end = base + params.size
         call_params: list[mop_t] = []
-        from_index: int | None = None
+        buffer_instructions: list[minsn_t] = []
+        buffer_size = 0
         state = ScanLogState.HEADER
 
-        for i, insn in enumerate(mblock.instructions(blk)):
+        for insn in mblock.instructions(blk):
             # Stop at the call
             if insn.ea == params.call_ea:
                 break
 
-            if not self.check_insn_part_of_log_macro(insn, params.call_ea, base, end, from_index is not None):
-                # If we started the log macro something is wrong, else try for next instruction
-                if from_index is not None:
-                    print(f"[Error] invalid log macro of {hex(params.call_ea)}")
-                    return None
-                else:
-                    continue
+            if not self.check_insn_part_of_log_macro(insn, params.call_ea, base, end):
+                continue
 
-            if from_index is None:
-                from_index = i
+            buffer_instructions.append(insn)
 
             # Advance state
             if state == ScanLogState.HEADER:
@@ -137,15 +134,23 @@ class log_macro_optimizer_t(optblock_counter_t):
                 call_params.append(insn.l)
                 state = ScanLogState.ITEM_HEADER
 
+            buffer_size += insn.l.size
+
         if state == ScanLogState.HEADER:
             # Never found the beginning of the log macro
             return None
         elif state == ScanLogState.ITEM_VALUE:
             print(f"[Error] failed to parse log macro of {hex(params.call_ea)}")
             return None
-        assert from_index is not None, "from_index should not be None here"
 
-        return from_index, call_params
+        if buffer_size != params.size:
+            print(
+                f"[Error] log macro size mismatch of {hex(params.call_ea)}: "
+                f"expected - {params.size}, found - {buffer_size}"
+            )
+            return None
+
+        return CollectLogParamsResult(buffer_instructions, call_params)
 
     def find_log_call(self, blk: mblock_t) -> tuple[minsn_t, LogCallParams] | None:
         """Find an `os_log` call in the given block and extract the parameters from it"""
@@ -165,7 +170,9 @@ class log_macro_optimizer_t(optblock_counter_t):
             return insn, params
         return None
 
-    def check_insn_part_of_log_macro(self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool) -> bool:
+    def check_insn_part_of_log_macro(
+        self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool = False
+    ) -> bool:
         """Check that the given `insn` is indeed part of a log macro"""
         # It is an Assignment
         if insn.opcode not in [
