@@ -1,0 +1,79 @@
+__all__ = ["generic_calls_fix_optimizer_t"]
+
+import ida_hexrays
+from ida_hexrays import mblock_t, mcallarg_t, mcallinfo_t, minsn_t, minsn_visitor_t
+from ida_typeinf import tinfo_t
+
+from objchelper.base.utils import CounterMixin, match_dict
+from objchelper.idahelper import cpp, tif
+from objchelper.idahelper.microcode import minsn, mop
+
+CAST_FUNCTIONS: dict[str, str] = {
+    "OSMetaClassBase::safeMetaCast": "OSDynamicCast",
+    "OSMetaClassBase::requiredMetaCast": "OSRequiredCast",
+}
+
+
+class insn_optimizer_t(minsn_visitor_t, CounterMixin):
+    def visit_minsn(self) -> int:
+        # We only want calls
+        insn: minsn_t = self.curins
+        if insn.opcode == ida_hexrays.m_call:
+            self.visit_call_insn(insn, self.blk)
+        return 0
+
+    def visit_call_insn(self, insn: minsn_t, blk: mblock_t):
+        # Filter calls to cast
+        name = minsn.get_func_name_of_call(insn)
+        if (new_name := match_dict(CAST_FUNCTIONS, name)) is None:
+            pass
+
+        # Verify call info
+        call_info: mcallinfo_t | None = insn.d.f
+        if call_info is None or len(call_info.args) != 2:
+            return
+
+        # Get the result type
+        cls: mcallarg_t = call_info.args[1]
+        if cls.t != ida_hexrays.mop_a:
+            # dynamic cast
+            return
+
+        # Convert name to type
+        cls_name_mangled = mop.get_name(cls.a)
+        if cls_name_mangled is None:
+            # No name, cannot optimize
+            return
+
+        cls_name = cpp.demangle_class_only(cls_name_mangled)
+        if cls_name is None:
+            print(f"[Error] Failed to extract class name: {cls_name_mangled}")
+            return
+
+        cls_type = tif.from_struct_name(cls_name)
+        if cls_type is None:
+            print(f"[Error] Failed to get type for class: {cls_name}")
+            return
+
+        # Set return type for call info
+        cls_type_pointer = tif.pointer_of(cls_type)
+        self.modify_call(cls_type_pointer, new_name, insn, call_info)
+
+    def modify_call(self, ret_type: tinfo_t, new_name: str, insn: minsn_t, call_info: mcallinfo_t) -> None:
+        if call_info.return_type == ret_type:
+            return
+
+        insn.l.make_helper(new_name)
+        call_info.return_type = ret_type
+        self.count()
+
+
+class generic_calls_fix_optimizer_t(ida_hexrays.optinsn_t):
+    def func(self, blk: mblock_t, ins: minsn_t, optflags: int):
+        # Let IDA reconstruct the calls before
+        if blk.mba.maturity < ida_hexrays.MMAT_CALLS:
+            return 0
+
+        insn_optimizer = insn_optimizer_t(blk.mba, blk)
+        ins.for_all_insns(insn_optimizer)
+        return insn_optimizer.cnt

@@ -8,8 +8,9 @@ A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
   functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`.
     - Optimize `_objc_storeStrong` to an assignment.
 - Remove `__break` calls.
+- Calls to `OSBaseClass::safeMetaCast` apply type info on the result.
 - collapse `__os_log_impl` calls.
-- collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection)
+- collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
 - Hide selectors and static classes from Objective-c calls.
 - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
 - When the keyboard is on a virtual call (`cls->vcall()`), Shift+X will show a dialog with all the possible
