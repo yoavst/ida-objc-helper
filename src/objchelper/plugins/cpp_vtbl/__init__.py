@@ -3,7 +3,7 @@ import idaapi
 from ida_kernwin import action_handler_t
 
 from objchelper.base.reloadable_plugin import UIAction, UIActionsComponent
-from objchelper.plugins.obj_vtbl.obj_vtbl import get_vtable_call, show_vtable_xrefs
+from objchelper.plugins.cpp_vtbl.cpp_vtbl import get_vtable_call, show_vtable_xrefs
 
 ACTION_ID = "objchelper:jump_to_vtbl_xrefs"
 

@@ -1,4 +1,4 @@
-__all__ = ["objc_block_args_analyzer_component"]
+__all__ = ["objc_block_args_analyzer_component", "objc_block_optimizer_component"]
 
 import ida_kernwin
 import idaapi

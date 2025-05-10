@@ -133,7 +133,8 @@ class log_macro_optimizer_t(optblock_counter_t):
                 if insn.d.size != 2:
                     if insn.d.size > 2:
                         print(
-                            f"[Error] Unsupported log macro because header size is bigger than 2 bytes: {insn.dstr()}")
+                            f"[Error] Unsupported log macro because header size is bigger than 2 bytes: {insn.dstr()}"
+                        )
                         return None
                     elif size_left_for_header is None:
                         size_left_for_header = 2 - insn.d.size
@@ -185,7 +186,7 @@ class log_macro_optimizer_t(optblock_counter_t):
         return None
 
     def check_insn_part_of_log_macro(
-            self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool = False
+        self, insn: minsn_t, call_ea: int, base: int, end: int, print_error: bool = False
     ) -> bool:
         """Check that the given `insn` is indeed part of a log macro"""
         # It is an Assignment
@@ -230,11 +231,11 @@ class log_macro_optimizer_t(optblock_counter_t):
         name_param = call_info.args[log_call_info.name_index] if log_call_info.name_index is not None else None
         # Verify types of operands
         if (
-                size_param.t != ida_hexrays.mop_n
-                or type_param.t != ida_hexrays.mop_n
-                or not format_param.is_glbaddr()
-                or buf_param.t != ida_hexrays.mop_a
-                or (name_param is not None and not name_param.is_glbaddr())
+            size_param.t != ida_hexrays.mop_n
+            or type_param.t != ida_hexrays.mop_n
+            or not format_param.is_glbaddr()
+            or buf_param.t != ida_hexrays.mop_a
+            or (name_param is not None and not name_param.is_glbaddr())
         ):
             return None
 
