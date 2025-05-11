@@ -6,7 +6,7 @@ from ida_typeinf import tinfo_t
 
 from objchelper.base.utils import CounterMixin, match_dict
 from objchelper.idahelper import cpp, tif
-from objchelper.idahelper.microcode import minsn, mop
+from objchelper.idahelper.microcode import mcallarg, minsn, mop
 
 CAST_FUNCTIONS: dict[str, str] = {
     "OSMetaClassBase::safeMetaCast": "OSDynamicCast",
@@ -55,16 +55,28 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
             print(f"[Error] Failed to get type for class: {cls_name}")
             return
 
-        # Set return type for call info
-        cls_type_pointer = tif.pointer_of(cls_type)
-        self.modify_call(cls_type_pointer, new_name, insn, call_info)
+        self.modify_call(cls_type, new_name, insn, call_info)
 
-    def modify_call(self, ret_type: tinfo_t, new_name: str, insn: minsn_t, call_info: mcallinfo_t) -> None:
-        if call_info.return_type == ret_type:
+    def modify_call(self, cls_type: tinfo_t, new_name: str, insn: minsn_t, call_info: mcallinfo_t) -> None:
+        cls_type_pointer = tif.pointer_of(cls_type)
+
+        # Check if already handled
+        if call_info.return_type == cls_type_pointer:
             return
 
-        insn.l.make_helper(new_name)
-        call_info.return_type = ret_type
+        # Apply name and type changes
+        insn.l.make_helper(f"{new_name}<{cls_type.get_type_name()}>")
+        call_info.return_type = cls_type_pointer
+
+        # Remove metaclass arg
+        call_info.args.pop_back()
+        call_info.solid_args -= 1
+
+        # Remove the name associated with the first parameter, so there will be no inlay hint
+        new_arg = mcallarg.from_mop(call_info.args[0], tif.pointer_of(tif.from_c_type("OSObject")))
+        call_info.args.pop_back()
+        call_info.args.push_back(new_arg)
+
         self.count()
 
 

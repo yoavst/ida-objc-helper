@@ -182,6 +182,22 @@ after:
   }
 ```
 
+## Automatic casts with `OSBaseClass::safeMetaCast`
+
+Before:
+
+```c++
+ OSObject *v5;
+ v5 = OSBaseClass::safeMetaCast(a2, &IOThunderboltController::metaClass);
+```
+
+After:
+
+```c++
+ IOThunderboltController *v5;
+ v5 = OSDynamicCast<IOThunderboltController>(a2);
+```
+
 ## Jump to virtual call
 
 Use `Shift+X` on a virtual call to jump.
