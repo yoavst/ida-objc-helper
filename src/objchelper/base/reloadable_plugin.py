@@ -15,7 +15,7 @@ import idaapi
 from ida_idaapi import plugin_t
 from ida_kernwin import UI_Hooks, action_desc_t
 
-IS_DEBUG = False
+IS_DEBUG = True
 
 
 class Component:

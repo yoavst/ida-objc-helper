@@ -54,6 +54,12 @@ def get_const_int(mop: mop_t, is_signed: bool = False) -> int | None:
         return mop.value(is_signed)
 
 
+def get_local_variable(mop: mop_t) -> int | None:
+    """Given a mop representing a local variable, return the variable"""
+    if mop.t == ida_hexrays.mop_l:
+        return mop.l.var()
+
+
 def get_stack_offset(mop: mop_t) -> int | None:
     """Given a mop representing a stack address, return its offset"""
     offset = None
