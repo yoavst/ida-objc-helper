@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from ida_hexrays import (
     cfunc_t,
     lvar_saved_info_t,
+    lvar_t,
     lvar_uservec_t,
     lvars_t,
     modify_user_lvars,
@@ -61,9 +62,17 @@ def perform_lvar_modifications(func: cfunc_t, modifications: dict[str, LvarModif
     return modify_user_lvars(entry_ea, custom_lvars_modifiers_t(modifications))
 
 
-def get_index(lvars: lvars_t, name: str) -> int:
+def get_index_by_name(lvars: lvars_t, name: str) -> int:
     """Get the index of the local variable with the given name."""
     for i, lvar in enumerate(lvars):
         if lvar.name == name:
+            return i
+    return -1
+
+
+def get_index(lvars: lvars_t, lvar: lvar_t) -> int:
+    """Get the index of the local variable with the given name."""
+    for i, lvar2 in enumerate(lvars):
+        if lvar == lvar2:
             return i
     return -1

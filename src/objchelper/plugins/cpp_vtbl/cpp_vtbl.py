@@ -51,25 +51,7 @@ def show_vtable_xrefs():
 
     vtable_type, call_name, offset = vtable_call
     actual_type = get_actual_class_from_vtable(vtable_type)
-    relevant_classes = tif.get_children_classes(actual_type)
-    pure_virtual_ea = memory.ea_from_name("___cxa_pure_virtual") or memory.ea_from_name("__cxa_pure_virtual")
-    # noinspection PyTypeChecker
-    matches: dict[int, str] = {}  # addr -> class_name
-
-    parent_impl = get_impl_from_parent(actual_type, offset, pure_virtual_ea)
-    if parent_impl is not None:
-        matches[parent_impl[0]] = parent_impl[1]
-
-    for cls in relevant_classes:
-        vtable_func_ea = get_vtable_entry(cls, offset, pure_virtual_ea)
-        if vtable_func_ea is None:
-            continue
-
-        # Add it to the dict if not already present.
-        # get_children_classes returns the classes in order of inheritance
-        if vtable_func_ea not in matches:
-            # noinspection PyTypeChecker
-            matches[vtable_func_ea] = cls.get_type_name()
+    matches = get_vtable_xrefs(vtable_type, offset)
 
     method_name = f"{actual_type.get_type_name()}->{call_name}"
     if not matches:
@@ -90,6 +72,31 @@ def show_vtable_xrefs():
             modal=True,
         )
         xrefs_choose.show()
+
+
+def get_vtable_xrefs(vtable_type: tinfo_t, offset: int) -> dict[int, str]:
+    """Given a vtable type and offset, return the address of the function at that offset."""
+    actual_type = get_actual_class_from_vtable(vtable_type)
+    children_classes = tif.get_children_classes(actual_type)
+    pure_virtual_ea = memory.ea_from_name("___cxa_pure_virtual") or memory.ea_from_name("__cxa_pure_virtual")
+    matches: dict[int, str] = {}  # addr -> class_name
+
+    # Get the base implementation, either from this class or its parent if it is inherited
+    parent_impl = get_impl_from_parent(actual_type, offset, pure_virtual_ea)
+    if parent_impl is not None:
+        matches[parent_impl[0]] = parent_impl[1]
+
+    for cls in children_classes:
+        vtable_func_ea = get_vtable_entry(cls, offset, pure_virtual_ea)
+        if vtable_func_ea is None:
+            continue
+
+        # Add it to the dict if not already present.
+        # get_children_classes returns the classes in order of inheritance
+        if vtable_func_ea not in matches:
+            # noinspection PyTypeChecker
+            matches[vtable_func_ea] = cls.get_type_name()
+    return matches
 
 
 def get_impl_from_parent(cls: tinfo_t, offset: int, pure_virtual_ea: int) -> tuple[int, str] | None:

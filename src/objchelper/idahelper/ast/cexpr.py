@@ -40,7 +40,7 @@ def from_var_name(name: str, func: cfunc_t) -> cexpr_t:
     """Create a cexpr_t from a variable name and the container function."""
     var_ref = var_ref_t()
     var_ref.mba = func.mba
-    var_ref.idx = lvars.get_index(func.get_lvars(), name)
+    var_ref.idx = lvars.get_index_by_name(func.get_lvars(), name)
     return from_var(var_ref)
 
 

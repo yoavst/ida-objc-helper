@@ -1,10 +1,8 @@
 import ida_hexrays
-from ida_hexrays import (
-    mop_addr_t,
-    mop_t,
-)
+from ida_hexrays import lvar_ref_t, lvar_t, mba_t, mop_addr_t, mop_t
 
 from objchelper.idahelper import memory
+from objchelper.idahelper.ast import lvars
 
 
 def from_global_ref(ea: int) -> mop_t:
@@ -15,6 +13,15 @@ def from_global_ref(ea: int) -> mop_t:
     mop.a.t = ida_hexrays.mop_v
     mop.a.g = ea
     mop.size = 8
+    return mop
+
+
+def from_lvar(lvar: lvar_t, mba: mba_t, offset: int = 0) -> mop_t:
+    """Given a lvar, create a mop that represents it"""
+    mop = mop_t()
+    mop.t = ida_hexrays.mop_l
+    mop.l = lvar_ref_t(mba, lvars.get_index(mba.vars, lvar), offset)
+    mop.size = lvar.width
     return mop
 
 
