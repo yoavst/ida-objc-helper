@@ -25,8 +25,8 @@ class insn_optimizer_t(minsn_visitor_t, CounterMixin):
     def visit_call_insn(self, insn: minsn_t, blk: mblock_t):
         # Filter calls to cast
         name = minsn.get_func_name_of_call(insn)
-        if (new_name := match_dict(CAST_FUNCTIONS, name)) is None:
-            pass
+        if name is None or (new_name := match_dict(CAST_FUNCTIONS, name)) is None:
+            return
 
         # Verify call info
         call_info: mcallinfo_t | None = insn.d.f
