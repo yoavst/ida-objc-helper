@@ -43,3 +43,13 @@ def set_name(ea: int, name: str, retry: bool = False) -> bool:
         res = bool(idc.set_name(ea, new_name, idc.SN_NOWARN | idc.SN_AUTO))
         if res:
             return res
+
+
+def is_user_defined_name(ea: int) -> bool:
+    """Check if the name at EA is user defined"""
+    ea_flags = ida_bytes.get_full_flags(ea)
+    if ea_flags == 0:
+        print("[Error] EA is not valid")
+        return False
+
+    return ida_bytes.has_user_name(ea_flags)

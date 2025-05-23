@@ -22,6 +22,7 @@ class LvarModification:
     name: str | None = None
     type: tinfo_t | None = None
     comment: str | None = None
+    force_name_change: bool = True
 
 
 class custom_lvars_modifiers_t(user_lvar_modifier_t):
@@ -67,7 +68,7 @@ def perform_lvar_modifications(func: cfunc_t | int, modifications: dict[str, Lva
 def rename_lvar(func: cfunc_t | int, old_name: str, new_name: str) -> bool:
     """Rename a local variable in the function."""
     entry_ea = func if isinstance(func, int) else func.entry_ea
-    return rename_lvar(entry_ea, old_name, new_name)
+    return ida_rename_lvar(entry_ea, old_name, new_name)
 
 
 def get_index_by_name(lvars: lvars_t, name: str) -> int:
