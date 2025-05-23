@@ -9,8 +9,10 @@ from ida_hexrays import (
     lvar_uservec_t,
     lvars_t,
     modify_user_lvars,
-    rename_lvar,
     user_lvar_modifier_t,
+)
+from ida_hexrays import (
+    rename_lvar as ida_rename_lvar,
 )
 from ida_typeinf import tinfo_t
 
@@ -46,20 +48,26 @@ class custom_lvars_modifiers_t(user_lvar_modifier_t):
         return has_matched
 
 
-def perform_lvar_modifications(func: cfunc_t, modifications: dict[str, LvarModification]) -> bool:
+def perform_lvar_modifications(func: cfunc_t | int, modifications: dict[str, LvarModification]) -> bool:
     """Perform the modifications on the local variables of the function."""
     if not modifications:
         return False
 
-    entry_ea = func.entry_ea
+    entry_ea = func if isinstance(func, int) else func.entry_ea
 
     # According to ida documentation:
     # `lvars.lvvec` contains only variables modified from the defaults.
     # To change other variables, you can, for example, first use rename_lvars, so they get added to this list
     for name in modifications:
-        rename_lvar(entry_ea, name, name)
+        ida_rename_lvar(entry_ea, name, name)
 
     return modify_user_lvars(entry_ea, custom_lvars_modifiers_t(modifications))
+
+
+def rename_lvar(func: cfunc_t | int, old_name: str, new_name: str) -> bool:
+    """Rename a local variable in the function."""
+    entry_ea = func if isinstance(func, int) else func.entry_ea
+    return rename_lvar(entry_ea, old_name, new_name)
 
 
 def get_index_by_name(lvars: lvars_t, name: str) -> int:

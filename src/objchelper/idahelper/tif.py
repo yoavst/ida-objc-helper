@@ -2,11 +2,11 @@ import dataclasses
 
 import ida_hexrays
 import ida_typeinf
-import ida_xref
 import idaapi
-import idautils
 from ida_funcs import func_t
 from ida_typeinf import func_type_data_t, tinfo_t, udm_t, udt_type_data_t
+
+from objchelper.idahelper.xrefs import get_xrefs_to
 
 
 def from_c_type(c_type: str) -> tinfo_t | None:
@@ -81,9 +81,14 @@ def from_func_details(details: func_type_data_t) -> tinfo_t | None:
         return tif
 
 
-def apply_tinfo(tif: tinfo_t, func: func_t) -> bool:
+def apply_tinfo_to_func(tif: tinfo_t, func: func_t) -> bool:
     """Apply typing info to the given function`"""
-    return idaapi.apply_tinfo(func.start_ea, tif, idaapi.TINFO_DEFINITE)
+    return apply_tinfo_to_ea(tif, func.start_ea)
+
+
+def apply_tinfo_to_ea(tif: tinfo_t, ea: int) -> bool:
+    """Apply typing info to the given ea`"""
+    return idaapi.apply_tinfo(ea, tif, idaapi.TINFO_DEFINITE)
 
 
 @dataclasses.dataclass
@@ -164,8 +169,8 @@ def get_children_classes(tif: tinfo_t) -> list[tinfo_t] | None:
 
     tid = tif.get_tid()
     children = []
-    for xref in idautils.XrefsTo(tid, ida_xref.XREF_DATA):
-        name = ida_typeinf.get_tid_name(xref.frm)
+    for xref in get_xrefs_to(tid, is_data=True):
+        name = ida_typeinf.get_tid_name(xref)
         if name and ".baseclass_" in name:
             cls_name = name.split(".baseclass_")[0]
             cls = from_struct_name(cls_name)

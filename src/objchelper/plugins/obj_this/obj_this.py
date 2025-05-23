@@ -46,7 +46,7 @@ def update_argument(func: func_t) -> bool:
 
     # Apply the changes
     new_tinfo = tif.from_func_details(func_details)
-    if not tif.apply_tinfo(new_tinfo, func):
+    if not tif.apply_tinfo_to_func(new_tinfo, func):
         print("[Error] Failed to apply new type info on function")
         return False
 
