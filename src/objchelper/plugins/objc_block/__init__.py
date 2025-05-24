@@ -23,7 +23,7 @@ objc_block_args_analyzer_component = UIActionsComponent.factory(
                 ObjcHelperToggleActionHandler(),
                 "Alt+Shift+s",
             ),
-            menu_location="Edit/Other/Objective-C/Analyze stack-allocated blocks (current function)...",
+            menu_location=UIAction.base_location(core),
         )
     ],
 )

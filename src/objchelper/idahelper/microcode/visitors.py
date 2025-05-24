@@ -3,7 +3,7 @@ from typing import TypeVar
 import ida_hexrays
 from ida_hexrays import mba_t, mblock_t, minsn_t, mop_t
 
-from objchelper.idahelper.microcode import mblock
+from objchelper.idahelper.microcode import mba, mblock
 
 
 class extended_microcode_visitor_t:
@@ -118,6 +118,15 @@ class extended_microcode_visitor_t:
         for insn in mblock.instructions(blk):
             self.top_ins = insn
             res = self.__visit_minsn(insn)
+            if res != 0:
+                return res
+        return 0
+
+    def visit_function(self, func_mba: mba_t) -> int:
+        """Run the visitor over a function"""
+        for blk in mba.blocks(func_mba):
+            self._init_state(blk)
+            res = self.visit_block(blk)
             if res != 0:
                 return res
         return 0
