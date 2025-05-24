@@ -1,22 +1,26 @@
-# IDA Objc Helper
+# IDA iOS Helper
 
-A plugin for IDA Pro 9.0+ to help with Objective-C code analysis.
+A plugin for IDA Pro 9.0+ to help with iOS code analysis.
 
 ## Supported features
 
-- Hide memory management
-  functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`.
-    - Optimize `_objc_storeStrong` to an assignment.
-- Remove `__break` calls.
-- Calls to `OSBaseClass::safeMetaCast` apply type info on the result.
-- collapse `__os_log_impl` calls.
-- collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
-- Hide selectors and static classes from Objective-c calls.
-- When in Obj-C method, Ctrl+4 will show xrefs to the selector.
-- When the keyboard is on a virtual call (`cls->vcall()`), Shift+X will show a dialog with all the possible
-  implementations of the virtual method. It requires vtable symbols to be present.
-- When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for Obj-C
-  instance methods.
+- KernelCache
+    - Calls to `OSBaseClass::safeMetaCast` apply type info on the result.
+    - When the keyboard is on a virtual call (`cls->vcall()`), Shift+X will show a dialog with all the possible
+      implementations of the virtual method. It requires vtable symbols to be present.
+    - When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for
+      Obj-C instance methods.
+    - Name globals from `OSSymbol::fromConst*` calls, and locals from `get/setProperty` calls.
+- Objective-C
+    - Hide memory management
+      functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`.
+        - Optimize `_objc_storeStrong` to an assignment.
+    - collapse `__os_log_impl` calls.
+    - Hide selectors and static classes from Objective-c calls.
+    - When in Obj-C method, Ctrl+4 will show xrefs to the selector.
+- Common
+    - Remove `__break` calls.
+    - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
 
 ## Installation
 
@@ -228,6 +232,6 @@ your IDE.
 - on PyCharm you can add the folder to the interpreter's paths in the project settings.
   Alternatively, you can create `idapython.pth` in `$VENV_FOLDER/Lib/site-packages` and add the path to it.
 
-Inside IDA, you can use `objchelper.reload()` to reload the plugin during development.
+Inside IDA, you can use `ioshelper.reload()` to reload the plugin during development.
 If you modify `IS_DEBUG = True` inside `src/objchelper/base/reloadable_plugin.py`, then you can use `F2` to reload the
 plugin.
