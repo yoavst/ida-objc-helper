@@ -104,7 +104,7 @@ class Call:
     def __str__(self):
         params_str = ", ".join([
             repr(param) if param is not None else op_param.dstr()
-            for param, op_param in zip(self.params, self.params_op, strict=True)
+            for param, op_param in zip(self.params, self.params_op)  # noqa: B905
         ])
         assignee_str = f", assignee={self.assignee.dstr()}" if self.assignee is not None else ""
         return f"Call(ea={hex(self.ea)}, params=[{params_str}]{assignee_str}"
