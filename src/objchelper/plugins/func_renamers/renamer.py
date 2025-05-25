@@ -223,9 +223,9 @@ class FuncHandler(abc.ABC):
                 print(f"Could not retype mop {op.dstr()} to {typ}: has offset {op.l.off}")
             # Local variable
             modifications.modify_local(op.l.var().name, VariableModification(type=typ))
-        elif op.is_glbaddr():
+        elif op.t == ida_hexrays.mop_a:
             # Deref the type
-            modifications.modify_global(op.a.g, VariableModification(type=typ.get_pointed_object()))
+            self.__retype_mop(op.a, typ.get_pointed_object(), modifications)
         elif op.t == ida_hexrays.mop_d:
             inner_insn: minsn_t = op.d
             if ida_hexrays.is_mcode_xdsu(inner_insn.opcode):
@@ -278,6 +278,7 @@ class FuncHandlerByNameWithStringFinder(FuncHandler, ABC):
         else:
             searched = xrefs.find_func_containing_string(self.search_string)
         if searched is None:
+            print("Could not find function", self.name)
             # Could not find the function
             return None
 

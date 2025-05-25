@@ -109,6 +109,11 @@ class peParseBootArgn(FuncHandler):
             modifications, call, 0, 1, modifier=lambda name: f"boot_{name.replace('-', '_')}"
         )
 
+        if isinstance(call.params[2], int):
+            new_type = tif.from_size(call.params[2])
+            if new_type is not None:
+                self._retype_parameter_by_index(modifications, call, 1, tif.pointer_of(new_type))
+
 
 GLOBAL_HANDLERS: list[FuncHandler] = [
     OSSymbol_WithCStringNoCopy,

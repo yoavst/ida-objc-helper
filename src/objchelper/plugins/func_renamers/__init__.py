@@ -5,11 +5,11 @@ import idaapi
 from ida_kernwin import action_handler_t
 
 from objchelper.base.reloadable_plugin import HexraysHookComponent, UIAction, UIActionsComponent
-from objchelper.plugins.func_renamers.func_renamers import LocalRenameHooks, apply_global_rename
+from objchelper.plugins.func_renamers.func_renamers import apply_global_rename, hooks
 
 ACTION_ID = "objchelper:func_renamer"
 
-local_func_renamer_component = HexraysHookComponent.factory("Local rename based on function calls", [LocalRenameHooks])
+local_func_renamer_component = HexraysHookComponent.factory("Local rename based on function calls", [hooks])
 
 mass_func_renamer_component = UIActionsComponent.factory(
     "Mass rename based on function calls",

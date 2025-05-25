@@ -75,3 +75,9 @@ class LocalRenameHooks(Hexrays_Hooks):
             process_function_calls(cfunc.mba, get_all_xref_matcher(), modifications)
 
         return 0
+
+
+def hooks():
+    # Load cache
+    get_all_xref_matcher()
+    return LocalRenameHooks()

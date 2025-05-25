@@ -44,6 +44,7 @@ def find_static_caller_for_string(s: str) -> int | None:
             finder = CallFinderForEa(item.ea)
             func = mba.from_func(func_xref)
             if func is None:
+                print("[Error] Could not build mba for func", hex(func_xref))
                 continue
             finder.visit_function(func)
             if finder.result is not None:
