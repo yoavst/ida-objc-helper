@@ -1,4 +1,5 @@
 import time
+from functools import cache
 
 import ida_hexrays
 from ida_hexrays import Hexrays_Hooks, cfunc_t
@@ -12,6 +13,32 @@ from objchelper.plugins.func_renamers.renamer import (
 from objchelper.plugins.func_renamers.visitor import FuncXref, XrefsMatcher, process_function_calls
 
 ALL_HANDLERS = [*LOCAL_HANDLERS, *GLOBAL_HANDLERS]
+
+
+@cache
+def get_global_xref_matcher() -> XrefsMatcher:
+    """Get a matcher for global xrefs."""
+    callbacks = []
+    for handler in GLOBAL_HANDLERS:
+        source_xref = handler.get_source_xref()
+        if source_xref is None or not isinstance(source_xref, FuncXref):
+            continue
+        callbacks.append((source_xref, handler.on_call))
+    # noinspection PyTypeChecker
+    return XrefsMatcher.build(callbacks)
+
+
+@cache
+def get_all_xref_matcher() -> XrefsMatcher:
+    """Get a matcher for global xrefs."""
+    callbacks = []
+    for handler in ALL_HANDLERS:
+        source_xref = handler.get_source_xref()
+        if source_xref is None:
+            continue
+        callbacks.append((source_xref, handler.on_call))
+    # noinspection PyTypeChecker
+    return XrefsMatcher.build(callbacks)
 
 
 def apply_global_rename():
@@ -34,10 +61,7 @@ def apply_global_rename():
             xref_func_ea = 0xFFFFFFF008D63C4C
             with Modifications(xref_func_ea, func_lvars=None) as modifications:
                 print(f"  {j + 1}/{len(xrefs_in_funcs)}: {xref_func_ea:#x}")
-                process_function_calls(
-                    mba.from_func(xref_func_ea),
-                    XrefsMatcher.build([(source_xref, lambda call, h=handler: h.on_call(call, modifications))]),
-                )
+                process_function_calls(mba.from_func(xref_func_ea), get_global_xref_matcher(), modifications)
     after = time.time()
     print(f"Completed! Took {int(after - before)} seconds")
 
@@ -47,15 +71,7 @@ class LocalRenameHooks(Hexrays_Hooks):
         if new_maturity != ida_hexrays.CMAT_CPA:
             return 0
 
-        callbacks = []
-        # TODO calculate get source xref once
         with Modifications(cfunc.entry_ea, func_lvars=cfunc.get_lvars()) as modifications:
-            for handler in ALL_HANDLERS:
-                source_xref = handler.get_source_xref()
-                if source_xref is None:
-                    continue
-                callbacks.append((source_xref, lambda call, h=handler: h.on_call(call, modifications)))
-
-            process_function_calls(cfunc.mba, XrefsMatcher.build(callbacks))
+            process_function_calls(cfunc.mba, get_all_xref_matcher(), modifications)
 
         return 0

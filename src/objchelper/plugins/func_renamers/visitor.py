@@ -28,7 +28,7 @@ class IndirectCallXref:
 
 
 SourceXref = HelperXref | FuncXref | IndirectCallXref
-CallCallback = Callable[["Call"], None]
+CallCallback = Callable[["Call", object], None]
 
 
 @dataclass(frozen=True)
@@ -76,9 +76,9 @@ class XrefsMatcher:
         return XrefsMatcher(helpers, calls, indirect_calls)
 
 
-def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher):
+def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher, ref: object):
     """Get all calls to the given function in the current function."""
-    StaticCallExtractorVisitor(matcher).visit_function(func_mba)
+    StaticCallExtractorVisitor(matcher, ref).visit_function(func_mba)
 
 
 # TODO: This is a hack, we should find a way to remove all consts
@@ -111,11 +111,12 @@ class Call:
 
 
 class StaticCallExtractorVisitor(extended_microcode_visitor_t):
-    def __init__(self, matcher: XrefsMatcher):
+    def __init__(self, matcher: XrefsMatcher, ref: object):
         super().__init__()
         self.matcher = matcher
         self.has_indirect_calls = bool(matcher.indirect_calls)
         self.has_direct_calls = bool(matcher.calls) or bool(matcher.helpers)
+        self.ref = ref
 
     def _visit_insn(self, ins: minsn_t) -> int:
         if ins.opcode == ida_hexrays.m_call and self.has_direct_calls:
@@ -139,7 +140,7 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         if callback is None:
             return
 
-        callback(self._build_call_for_callback(ins))
+        callback(self._build_call_for_callback(ins), self.ref)
 
     def _visit_icall(self, ins: minsn_t):
         # Search for indirect call of x->vtable->func
@@ -174,7 +175,7 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         if callback is None:
             return
 
-        callback(self._build_call_for_callback(ins))
+        callback(self._build_call_for_callback(ins), self.ref)
 
     def _build_call_for_callback(self, ins: minsn_t) -> Call:
         """Build a Call object for the given instruction."""
