@@ -1,49 +1,78 @@
 __all__ = ["GLOBAL_HANDLERS", "LOCAL_HANDLERS"]
 
-import functools
-
-from ida_typeinf import tinfo_t
-
 from objchelper.idahelper import tif
-from objchelper.plugins.func_renamers.renamer import FuncHandler, FuncHandlerByNameWithStringFinder, Modifications
-from objchelper.plugins.func_renamers.visitor import Call
+from objchelper.plugins.func_renamers.renamer import (
+    FuncHandler,
+    FuncHandlerByNameWithStringFinder,
+    FuncHandlerVirtualGetter,
+    FuncHandlerVirtualSetter,
+    Modifications,
+)
+from objchelper.plugins.func_renamers.visitor import Call, SourceXref
 
 
-@functools.cache
-def _os_symbol_type() -> tinfo_t | None:
-    os_symbol = tif.from_struct_name("OSSymbol")
-    if os_symbol is not None:
-        return tif.pointer_of(os_symbol)
-    return None
-
-
-class OSSymbol_WithCStringNoCopy(FuncHandlerByNameWithStringFinder):
-    def __init__(self):
+class OSSymbolHandler(FuncHandlerByNameWithStringFinder):
+    def __init__(self, name: str, search_string: str):
         super().__init__(
-            "OSSymbol::withCStringNoCopy",
+            name,
             tif.from_func_components("OSSymbol*", [tif.FuncParam("const char*", "cString")]),
-            search_string="IOMatchedPersonality",
+            search_string,
+            is_call=True,
         )
-        self._cached_symbol_type: tinfo_t | None = None
+
+        self._cached_symbol_type = tif.from_c_type("OSSymbol*")
+
+    def get_source_xref(self) -> SourceXref | None:
+        if self._cached_symbol_type is None:
+            return None
+        return super().get_source_xref()
 
     def on_call(self, call: Call, modifications: Modifications):
         self._rename_assignee_by_index(modifications, call, 0, modifier=lambda name: f"sym_{name}")
-        self._retype_assignee(modifications, call, _os_symbol_type())
+        self._retype_assignee(modifications, call, self._cached_symbol_type)
 
 
-class OSSymbol_WithCString(FuncHandlerByNameWithStringFinder):
+OSSymbol_WithCStringNoCopy = OSSymbolHandler("OSSymbol::withCStringNoCopy", "IOMatchedPersonality")
+OSSymbol_WithCString = OSSymbolHandler("OSSymbol::withCString", "ACIPCInterfaceProtocol")
+
+
+class IORegistry_MakePlane(FuncHandlerByNameWithStringFinder):
     def __init__(self):
         super().__init__(
-            "OSSymbol::withCString",
-            tif.from_func_components("OSSymbol*", [tif.FuncParam("const char*", "cString")]),
-            search_string="ACIPCInterfaceProtocol",
+            "IORegistry::makePlane",
+            tif.from_func_components("IORegistryPlane*", [tif.FuncParam("const char*", "name")]),
+            "ChildLinks",
+            is_call=False,
         )
-        self._cached_symbol_type: tinfo_t | None = None
+        self._cached_registry_plane_type = tif.from_c_type("IORegistryPlane*")
+
+    def get_source_xref(self) -> SourceXref | None:
+        if self._cached_registry_plane_type is None:
+            return None
+        return super().get_source_xref()
 
     def on_call(self, call: Call, modifications: Modifications):
-        self._rename_assignee_by_index(modifications, call, 0, modifier=lambda name: f"sym_{name}")
-        self._retype_assignee(modifications, call, _os_symbol_type())
+        self._rename_assignee_by_index(modifications, call, 0, modifier=lambda name: f"plane_{name}")
+        self._retype_assignee(modifications, call, self._cached_registry_plane_type)
 
 
-GLOBAL_HANDLERS: list[FuncHandler] = [OSSymbol_WithCStringNoCopy(), OSSymbol_WithCString()]
-LOCAL_HANDLERS: list[FuncHandler] = []
+IOService_SetProperty = [
+    FuncHandlerVirtualSetter(
+        "IORegistryEntry::setProperty",
+        tif.from_c_type("IORegistryEntry"),
+        offset,
+        name_index=1,
+        rename_index=2,
+        rename_prefix="val",
+    )
+    for offset in range(0xB8, 0xF0, 8)
+]
+IOService_GetProperty = FuncHandlerVirtualGetter(
+    "IORegistryEntry::getProperty", tif.from_c_type("IORegistryEntry"), 0x118, name_index=1, rename_prefix="val"
+)
+IOService_CopyProperty = FuncHandlerVirtualGetter(
+    "IORegistryEntry::copyProperty", tif.from_c_type("IORegistryEntry"), 0x148, name_index=1, rename_prefix="val"
+)
+
+GLOBAL_HANDLERS: list[FuncHandler] = [OSSymbol_WithCStringNoCopy, OSSymbol_WithCString, IORegistry_MakePlane()]
+LOCAL_HANDLERS: list[FuncHandler] = [*IOService_SetProperty, IOService_GetProperty, IOService_CopyProperty]

@@ -1,16 +1,15 @@
 import abc
 from abc import ABC
 from collections.abc import Callable
-from dataclasses import dataclass
 
 import ida_hexrays
-from ida_hexrays import lvars_t, mop_t
+from ida_hexrays import lvars_t, minsn_t, mop_t
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import memory, tif, xrefs
 from objchelper.idahelper.ast import lvars
 from objchelper.idahelper.ast.lvars import VariableModification
-from objchelper.plugins.func_renamers.visitor import Call, ParsedParam
+from objchelper.plugins.func_renamers.visitor import Call, FuncXref, IndirectCallXref, ParsedParam, SourceXref
 
 
 class Modifications:
@@ -96,27 +95,6 @@ class Modifications:
             f"global_modifications={self._global_modifications}, type_modifications={self._type_modifications}, "
             f"new_name={self._func_name})"
         )
-
-
-@dataclass
-class HelperXref:
-    name: str
-
-    def value(self) -> str:
-        """Return the name of the helper function"""
-        return self.name
-
-
-@dataclass
-class FuncXref:
-    ea: int
-
-    def value(self) -> int:
-        """Return the ea of the function"""
-        return self.ea
-
-
-SourceXref = HelperXref | FuncXref
 
 
 class FuncHandler(abc.ABC):
@@ -217,9 +195,13 @@ class FuncHandler(abc.ABC):
                 print(f"Could not retype mop {op.dstr()} to {typ}: has offset {op.l.off}")
             # Local variable
             modifications.modify_local(op.l.var().name, VariableModification(type=typ))
-        else:
-            # TODO support fields
-            print(f"Could not retype mop {op.dstr()} to {typ}: unsupported type {op.t}")
+        elif op.t == ida_hexrays.mop_d:
+            inner_insn: minsn_t = op.d
+            if ida_hexrays.is_mcode_xdsu(inner_insn.opcode):
+                self.__retype_mop(inner_insn.l, typ, modifications)
+            else:
+                # TODO support fields
+                print(f"Could not retype mop {op.dstr()} to {typ}: unsupported type {op.t} yet")
 
     # noinspection PyMethodMayBeStatic
     def __rename_mop(self, op: mop_t, name: str, modifications: Modifications, follow_address: bool = True):
@@ -236,23 +218,31 @@ class FuncHandler(abc.ABC):
         elif follow_address and op.t == ida_hexrays.mop_a:
             # Variable whose address is taken
             self.__rename_mop(op.a, name, modifications, follow_address)
-        else:
-            # TODO support fields
-            print(f"Could not rename mop {op.dstr()} to {name}: unsupported type {op.t}")
+        elif op.t == ida_hexrays.mop_d:
+            inner_insn: minsn_t = op.d
+            if ida_hexrays.is_mcode_xdsu(inner_insn.opcode):
+                self.__rename_mop(inner_insn.l, name, modifications, follow_address)
+            else:
+                # TODO support fields
+                print(f"Could not rename mop {op.dstr()} to {name}: unsupported type {op.t} yet")
 
 
 class FuncHandlerByNameWithStringFinder(FuncHandler, ABC):
-    def __init__(self, name: str, func_type: tinfo_t, search_string: str):
+    def __init__(self, name: str, func_type: tinfo_t, search_string: str, is_call: bool):
         super().__init__(name)
         self.search_string: str = search_string
         self.func_type: tinfo_t = func_type
+        self.is_call = is_call
 
     def get_source_xref(self) -> SourceXref | None:
         existing = memory.ea_from_name(self.name)
         if existing is not None:
             return FuncXref(existing)
 
-        searched = xrefs.find_static_caller_for_string(self.search_string)
+        if self.is_call:
+            searched = xrefs.find_static_caller_for_string(self.search_string)
+        else:
+            searched = xrefs.find_func_containing_string(self.search_string)
         if searched is None:
             # Could not find the function
             return None
@@ -264,3 +254,48 @@ class FuncHandlerByNameWithStringFinder(FuncHandler, ABC):
             return None
 
         return FuncXref(searched)
+
+
+class FuncHandlerVirtualGetter(FuncHandler, ABC):
+    def __init__(
+        self, name: str, obj_type: tinfo_t | None, offset: int, name_index: int, rename_prefix: str | None = None
+    ):
+        super().__init__(name)
+        self.obj_type: tinfo_t = obj_type
+        self.offset = offset
+        self.name_index = name_index
+        self.rename_modifier = lambda n: f"{rename_prefix}_{n}" if rename_prefix is not None else None
+
+    def get_source_xref(self) -> SourceXref | None:
+        if self.obj_type is None:
+            return None
+        return IndirectCallXref(self.obj_type, self.offset)
+
+    def on_call(self, call: Call, modifications: Modifications):
+        self._rename_assignee_by_index(modifications, call, self.name_index, self.rename_modifier)
+
+
+class FuncHandlerVirtualSetter(FuncHandler, ABC):
+    def __init__(
+        self,
+        name: str,
+        obj_type: tinfo_t | None,
+        offset: int,
+        name_index: int,
+        rename_index: int,
+        rename_prefix: str | None = None,
+    ):
+        super().__init__(name)
+        self.obj_type: tinfo_t = obj_type
+        self.offset = offset
+        self.name_index = name_index
+        self.rename_index = rename_index
+        self.rename_modifier = lambda n: f"{rename_prefix}_{n}" if rename_prefix is not None else None
+
+    def get_source_xref(self) -> SourceXref | None:
+        if self.obj_type is None:
+            return None
+        return IndirectCallXref(self.obj_type, self.offset)
+
+    def on_call(self, call: Call, modifications: Modifications):
+        self._rename_parameter_by_index(modifications, call, self.name_index, self.rename_index, self.rename_modifier)

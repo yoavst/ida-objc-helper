@@ -1,19 +1,84 @@
-__all__ = ["Call", "ParsedParam", "process_function_calls"]
-
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import ida_hexrays
 from ida_hexrays import mba_t, mcallarg_t, minsn_t, mop_t
+from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import tif
 from objchelper.idahelper.microcode import mop
 from objchelper.idahelper.microcode.visitors import extended_microcode_visitor_t
+from objchelper.plugins.generic_calls_fix import CAST_FUNCTION_NAMES
 
 
-def process_function_calls(func_mba: mba_t, callbacks: dict[int | str, Callable[["Call"], None]]):
+@dataclass(frozen=True)
+class HelperXref:
+    name: str
+
+
+@dataclass(frozen=True)
+class FuncXref:
+    ea: int
+
+
+@dataclass(frozen=True)
+class IndirectCallXref:
+    type: tinfo_t
+    offset: int
+
+
+SourceXref = HelperXref | FuncXref | IndirectCallXref
+CallCallback = Callable[["Call"], None]
+
+
+@dataclass(frozen=True)
+class XrefsMatcher:
+    helpers: dict[str, CallCallback]
+    """Mapping between helper names and their callbacks"""
+    calls: dict[int, CallCallback]
+    """Mapping between function addresses and their callbacks"""
+    indirect_calls: dict[int, list[tuple[int, CallCallback]]]
+    """Mapping between indirect call offset -> type tid -> callback"""
+
+    def match_indirect_call(self, typ: tinfo_t, offset: int) -> CallCallback | None:
+        candidates = self.indirect_calls.get(offset)
+        if candidates is None:
+            return None
+        if typ.is_ptr():
+            typ = typ.get_pointed_object()
+
+        type_parent_tifs = tif.get_parent_classes(typ)
+        if type_parent_tifs is None:
+            return None
+        type_parent_tifs.append(typ)
+
+        type_parents = {parent.get_tid() for parent in type_parent_tifs}
+        for candidate_type, callback in candidates:
+            if candidate_type in type_parents:
+                return callback
+
+        return None
+
+    @staticmethod
+    def build(callbacks: list[tuple[[SourceXref, CallCallback]]]) -> "XrefsMatcher":
+        """Build a matcher from the given callbacks."""
+        helpers = {}
+        calls = {}
+        indirect_calls = {}
+        for xref, callback in callbacks:
+            if isinstance(xref, HelperXref):
+                helpers[xref.name] = callback
+            elif isinstance(xref, FuncXref):
+                calls[xref.ea] = callback
+            elif isinstance(xref, IndirectCallXref):
+                indirect_calls.setdefault(xref.offset, []).append((xref.type.get_tid(), callback))
+
+        return XrefsMatcher(helpers, calls, indirect_calls)
+
+
+def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher):
     """Get all calls to the given function in the current function."""
-    StaticCallExtractorVisitor(callbacks).visit_function(func_mba)
+    StaticCallExtractorVisitor(matcher).visit_function(func_mba)
 
 
 # TODO: This is a hack, we should find a way to remove all consts
@@ -46,33 +111,80 @@ class Call:
 
 
 class StaticCallExtractorVisitor(extended_microcode_visitor_t):
-    def __init__(self, callbacks: dict[int | str, Callable[[Call], None]]):
+    def __init__(self, matcher: XrefsMatcher):
         super().__init__()
-        self.callbacks = callbacks
+        self.matcher = matcher
+        self.has_indirect_calls = bool(matcher.indirect_calls)
+        self.has_direct_calls = bool(matcher.calls) or bool(matcher.helpers)
 
     def _visit_insn(self, ins: minsn_t) -> int:
-        if ins.opcode != ida_hexrays.m_call:
+        if ins.opcode == ida_hexrays.m_call and self.has_direct_calls:
+            self._visit_call(ins)
+            return 0
+        elif ins.opcode == ida_hexrays.m_icall:  # and self.has_indirect_calls:
+            self._visit_icall(ins)
             return 0
 
-        if ins.l.t == ida_hexrays.mop_v:
-            match = ins.l.g
-        elif ins.l.t == ida_hexrays.mop_h:
-            match = ins.l.helper
-        else:
-            return 0
-
-        callback = self.callbacks.get(match)
-        if callback is None:
-            return 0
-
-        params: list[mcallarg_t] = list(ins.d.f.args)
-        parsed_params = [parse_param(param) for param in params]
-        assignee = try_extract_assignee(self.parents)
-        callback(Call(self.mba.entry_ea, ins.ea, params, parsed_params, assignee))
         return 0
 
+    def _visit_call(self, ins: minsn_t):
+        """Search for direct call and invoke the callback."""
+        if ins.l.t == ida_hexrays.mop_v:
+            callback = self.matcher.calls.get(ins.l.g)
+        elif ins.l.t == ida_hexrays.mop_h:
+            callback = self.matcher.helpers.get(ins.l.helper)
+        else:
+            return
 
-def try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
+        if callback is None:
+            return
+
+        callback(self._build_call_for_callback(ins))
+
+    def _visit_icall(self, ins: minsn_t):
+        # Search for indirect call of x->vtable->func
+        # Which is x => *x => *x->vtable (offset 0) => *x->vtable + offsetOf(func) => *x->vtable->func
+        # Expects ldx
+        if ins.r.t != ida_hexrays.mop_d or ins.r.d.opcode != ida_hexrays.m_ldx:
+            return
+
+        # Expects add
+        ldx_ins = ins.r.d
+        if ldx_ins.r.t != ida_hexrays.mop_d or ldx_ins.r.d.opcode != ida_hexrays.m_add:
+            return
+        add_ins = ldx_ins.r.d
+
+        # Expects add with const
+        const_offset = mop.get_const_int(add_ins.r)
+        if const_offset is None:
+            return
+
+        # Except ldx of reading a local variable
+        if add_ins.l.t != ida_hexrays.mop_d or add_ins.l.d.opcode != ida_hexrays.m_ldx:
+            return
+        ldx_ins_2 = add_ins.l.d
+
+        # Expect local
+        if ldx_ins_2.r.t != ida_hexrays.mop_l:
+            return
+        lvar = ldx_ins_2.r.l.var()
+        lvar_type = lvar.type()
+
+        callback = self.matcher.match_indirect_call(lvar_type, const_offset)
+        if callback is None:
+            return
+
+        callback(self._build_call_for_callback(ins))
+
+    def _build_call_for_callback(self, ins: minsn_t) -> Call:
+        """Build a Call object for the given instruction."""
+        params: list[mcallarg_t] = list(ins.d.f.args)
+        parsed_params = [_parse_param(param) for param in params]
+        assignee = _try_extract_assignee(self.parents)
+        return Call(self.mba.entry_ea, ins.ea, params, parsed_params, assignee)
+
+
+def _try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
     """
     Try to extract the assignee from the parents of the call.
     """
@@ -91,6 +203,14 @@ def try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
     if isinstance(parent, mop_t):
         # In this case we are a function argument, therefore no assignee
         assert parent.t == ida_hexrays.mop_f, f"Expected mop_f, got {parent.dstr()}"
+        # If this is a dynamic cast, we can try to unwrap it
+        call: minsn_t = parents[-3]
+        if call.l.t == ida_hexrays.mop_h and any(
+            call.l.helper.startswith(cast_name) for cast_name in CAST_FUNCTION_NAMES
+        ):
+            # Skip the cast helper and try to extract the assignee from the next parent
+            return _try_extract_assignee(parents[:-3])
+
         return None
     # minsn_t case
     elif parent.is_like_move() or parent.opcode == ida_hexrays.m_stx:
@@ -102,8 +222,18 @@ def try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
     return None
 
 
-def parse_param(param: mcallarg_t) -> ParsedParam:
+def _parse_param(param: mcallarg_t) -> ParsedParam:
     """Try to parse the param to python constant"""
-    if param.type in CHAR_POINTER_TYPES:
+    if _is_string_param(param):
         return mop.get_str(param)
     return mop.get_const_int(param)
+
+
+def _is_string_param(param: mcallarg_t) -> bool:
+    """Check if the param is a string pointer."""
+    if param.type.is_ptr_or_array() and param.type.get_pointed_object().is_char():
+        return True
+
+    # Sometimes IDA decides it is a _QWORD even though the signature has char* and this is string const.
+    # Let's assume it is a string param and see if it decodes
+    return mop.get_str(param) is not None

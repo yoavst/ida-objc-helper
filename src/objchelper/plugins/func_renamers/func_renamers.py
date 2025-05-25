@@ -7,10 +7,9 @@ from objchelper.idahelper import xrefs
 from objchelper.idahelper.microcode import mba
 from objchelper.plugins.func_renamers.handlers import GLOBAL_HANDLERS, LOCAL_HANDLERS
 from objchelper.plugins.func_renamers.renamer import (
-    FuncXref,
     Modifications,
 )
-from objchelper.plugins.func_renamers.visitor import process_function_calls
+from objchelper.plugins.func_renamers.visitor import FuncXref, XrefsMatcher, process_function_calls
 
 ALL_HANDLERS = [*LOCAL_HANDLERS, *GLOBAL_HANDLERS]
 
@@ -36,25 +35,27 @@ def apply_global_rename():
             with Modifications(xref_func_ea, func_lvars=None) as modifications:
                 print(f"  {j + 1}/{len(xrefs_in_funcs)}: {xref_func_ea:#x}")
                 process_function_calls(
-                    mba.from_func(xref_func_ea), {func_ea: lambda call: handler.on_call(call, modifications)}
+                    mba.from_func(xref_func_ea),
+                    XrefsMatcher.build([(source_xref, lambda call, h=handler: h.on_call(call, modifications))]),
                 )
     after = time.time()
-    print(f"Completed! Took {int(after-before)} seconds")
+    print(f"Completed! Took {int(after - before)} seconds")
 
 
 class LocalRenameHooks(Hexrays_Hooks):
     def maturity(self, cfunc: cfunc_t, new_maturity: int) -> int:
-        if new_maturity < ida_hexrays.CMAT_FINAL:
+        if new_maturity != ida_hexrays.CMAT_CPA:
             return 0
 
-        callbacks = {}
+        callbacks = []
+        # TODO calculate get source xref once
         with Modifications(cfunc.entry_ea, func_lvars=cfunc.get_lvars()) as modifications:
             for handler in ALL_HANDLERS:
                 source_xref = handler.get_source_xref()
                 if source_xref is None:
                     continue
-                callbacks[source_xref.ea] = lambda call: handler.on_call(call, modifications)
+                callbacks.append((source_xref, lambda call, h=handler: h.on_call(call, modifications)))
 
-            process_function_calls(cfunc.mba, callbacks)
+            process_function_calls(cfunc.mba, XrefsMatcher.build(callbacks))
 
         return 0

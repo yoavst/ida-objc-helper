@@ -25,13 +25,27 @@ def func_xrefs_to(func_ea: int) -> set[int]:
     return xrefs_in_funcs
 
 
+def find_func_containing_string(s: str) -> int | None:
+    """Assume there is a single function that contains s, return the EA of call function"""
+    # There might be multiple references to the string, so we need to find the one that is inside a function
+    for item in strings.find_strs(s):
+        for xref_ea in get_xrefs_to(item.ea):
+            func: func_t = idaapi.get_func(xref_ea)
+            if func is not None:
+                return func.start_ea
+    return None
+
+
 def find_static_caller_for_string(s: str) -> int | None:
     """Assume there is a single call(..., s, ...) in code, return the EA of call function"""
     # There might be multiple references to the string, so we need to find the one that is a call
     for item in strings.find_strs(s):
         for func_xref in func_xrefs_to(item.ea):
             finder = CallFinderForEa(item.ea)
-            finder.visit_function(mba.from_func(func_xref))
+            func = mba.from_func(func_xref)
+            if func is None:
+                continue
+            finder.visit_function(func)
             if finder.result is not None:
                 return finder.result
 

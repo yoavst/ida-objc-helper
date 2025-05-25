@@ -49,8 +49,10 @@ class custom_lvars_modifiers_t(user_lvar_modifier_t):
         """Modify a single local variable."""
         if modification.name is not None:
             lvar.name = modification.name
+            lvar.set_user_name()
         if modification.type is not None:
             lvar.type = modification.type
+            lvar.set_user_type()
         if modification.comment is not None:
             lvar.cmt = modification.comment
 
@@ -75,10 +77,9 @@ def perform_lvar_modifications(
     # `lvars.lvvec` contains only variables modified from the defaults.
     # To change other variables, you can, for example, first use rename_lvars, so they get added to this list
     for name, modification in modifications.items():
-        if not modification.force_name_change and get_by_name(lvars, name).has_user_name():
+        if not modification.force_name_change and get_by_name(lvars, name).has_user_name:
             # Already has name, so don't change the name
             # It will be in lvvec, so we can just skip it
-            print(f"Skipping modification of {name} as it already has a user defined name")
             modification.name = None
             continue
 
