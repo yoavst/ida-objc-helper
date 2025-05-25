@@ -15,7 +15,7 @@ from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import tif, widgets
 from objchelper.idahelper.ast import cexpr, cfunc, lvars
-from objchelper.idahelper.ast.lvars import LvarModification
+from objchelper.idahelper.ast.lvars import VariableModification
 from objchelper.idahelper.microcode import mba, mblock, mop
 from objchelper.plugins.objc_block.block import (
     FLAG_BLOCK_HAS_COPY_DISPOSE,
@@ -48,11 +48,11 @@ def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
         return
 
     # scan the microcode using the offsets to see if any of them is a start of a by ref arg struct.
-    lvar_modifications: dict[str, LvarModification] = {}  # lvar_name -> type_modification
+    lvar_modifications: dict[str, VariableModification] = {}  # lvar_name -> type_modification
     for result in ScanForRefArg(set(stack_off_to_its_assignment.keys())).scan(func.mba):
         new_type = create_block_arg_byref_type(result.initialization_ea, result.variable.size, result.has_helpers)
         block_arg_by_ref_lvar = cfunc.get_lvar_by_offset(func, result.initial_stack_offset)
-        lvar_modifications[block_arg_by_ref_lvar.name] = LvarModification(type=new_type)
+        lvar_modifications[block_arg_by_ref_lvar.name] = VariableModification(type=new_type)
 
         # given: a.b = &block_by_ref, set b's type to block_by_ref*
         # It would not be a cast assign, as the type is already a pointer.
@@ -61,7 +61,7 @@ def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
 
     if lvar_modifications:
         # Apply new types for the lvars
-        if not lvars.perform_lvar_modifications(func, lvar_modifications):
+        if not lvars.perform_lvar_modifications_by_ea(func.entry_ea, lvar_modifications):
             print("[Error] Failed to modify lvars")
 
         # Finally, refresh the widget

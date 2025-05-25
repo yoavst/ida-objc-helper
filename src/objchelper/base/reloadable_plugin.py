@@ -267,6 +267,14 @@ class UIAction:
     menu_location: str | None = None
     dynamic_menu_add: Callable[["TWidget *", "TPopupMenu *"], bool] | None = None  # noqa: F722
 
+    @staticmethod
+    def base_location(core: PluginCore) -> str:
+        """
+        Returns the base location for the plugin's UI actions.
+        This is used to create a unique menu location for the actions.
+        """
+        return f"Edit/Plugins/{core.name}/"
+
 
 class UIActionsComponentUIHooks(idaapi.UI_Hooks):
     def __init__(self, actions: list[UIAction]):

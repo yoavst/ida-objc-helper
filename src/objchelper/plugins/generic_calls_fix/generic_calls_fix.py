@@ -1,4 +1,4 @@
-__all__ = ["generic_calls_fix_optimizer_t"]
+__all__ = ["generic_calls_fix_optimizer_t", "CAST_FUNCTIONS"]
 
 import ida_hexrays
 from ida_hexrays import mblock_t, mcallarg_t, mcallinfo_t, minsn_t, minsn_visitor_t

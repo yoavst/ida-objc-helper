@@ -1,3 +1,5 @@
+import re
+
 import ida_bytes
 import idaapi
 import idc
@@ -36,6 +38,11 @@ def set_name(ea: int, name: str, retry: bool = False) -> bool:
     res = bool(idc.set_name(ea, name, idc.SN_NOWARN | idc.SN_AUTO))
     if res or not retry:
         return res
+
+    cur_name = name_from_ea(ea)
+    if cur_name is not None and re.match(re.escape(name) + r"(_\d+)?$", cur_name):
+        # If the current name already has a postfix, we assume it was set by a previous retry
+        return True
 
     print(f"Failed to set name {name} at {hex(ea)}, retrying with postfix")
     for i in range(1, RETRY_COUNT + 1):
