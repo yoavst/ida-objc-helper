@@ -1,6 +1,6 @@
 __all__ = ["GLOBAL_HANDLERS", "LOCAL_HANDLERS"]
 
-from objchelper.idahelper import memory, tif
+from objchelper.idahelper import kernelcache, memory, tif
 from objchelper.plugins.func_renamers.renamer import (
     FuncHandler,
     FuncHandlerByNameWithStringFinder,
@@ -115,15 +115,19 @@ class peParseBootArgn(FuncHandler):
                 self._retype_parameter_by_index(modifications, call, 1, tif.pointer_of(new_type))
 
 
-GLOBAL_HANDLERS: list[FuncHandler] = [
-    OSSymbol_WithCStringNoCopy,
-    OSSymbol_WithCString,
-    IORegistry_MakePlane(),
-    MetaClassConstructor(),
-]
-LOCAL_HANDLERS: list[FuncHandler] = [
-    *IOService_SetProperty,
-    IOService_GetProperty,
-    IOService_CopyProperty,
-    peParseBootArgn(),
-]
+if kernelcache.is_kernelcache():
+    GLOBAL_HANDLERS: list[FuncHandler] = [
+        OSSymbol_WithCStringNoCopy,
+        OSSymbol_WithCString,
+        IORegistry_MakePlane(),
+        MetaClassConstructor(),
+    ]
+    LOCAL_HANDLERS: list[FuncHandler] = [
+        *IOService_SetProperty,
+        IOService_GetProperty,
+        IOService_CopyProperty,
+        peParseBootArgn(),
+    ]
+else:
+    GLOBAL_HANDLERS = []
+    LOCAL_HANDLERS = []
