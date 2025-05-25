@@ -1,6 +1,6 @@
 __all__ = ["GLOBAL_HANDLERS", "LOCAL_HANDLERS"]
 
-from objchelper.idahelper import tif
+from objchelper.idahelper import memory, tif
 from objchelper.plugins.func_renamers.renamer import (
     FuncHandler,
     FuncHandlerByNameWithStringFinder,
@@ -8,7 +8,7 @@ from objchelper.plugins.func_renamers.renamer import (
     FuncHandlerVirtualSetter,
     Modifications,
 )
-from objchelper.plugins.func_renamers.visitor import Call
+from objchelper.plugins.func_renamers.visitor import Call, FuncXref, SourceXref
 
 
 class OSSymbolHandler(FuncHandlerByNameWithStringFinder):
@@ -95,10 +95,30 @@ class MetaClassConstructor(FuncHandlerByNameWithStringFinder):
         self._retype_parameter_by_index(modifications, call, 0, self._cached_metaclass_type)
 
 
+class peParseBootArgn(FuncHandler):
+    def __init__(self):
+        super().__init__("PE_parse_boot_argn")
+
+    def get_source_xref(self) -> SourceXref | None:
+        existing = memory.ea_from_name("PE_parse_boot_argn")
+        if existing is not None:
+            return FuncXref(existing)
+
+    def on_call(self, call: Call, modifications: Modifications):
+        self._rename_parameter_by_index(
+            modifications, call, 0, 1, modifier=lambda name: f"boot_{name.replace('-', '_')}"
+        )
+
+
 GLOBAL_HANDLERS: list[FuncHandler] = [
     OSSymbol_WithCStringNoCopy,
     OSSymbol_WithCString,
     IORegistry_MakePlane(),
     MetaClassConstructor(),
 ]
-LOCAL_HANDLERS: list[FuncHandler] = [*IOService_SetProperty, IOService_GetProperty, IOService_CopyProperty]
+LOCAL_HANDLERS: list[FuncHandler] = [
+    *IOService_SetProperty,
+    IOService_GetProperty,
+    IOService_CopyProperty,
+    peParseBootArgn(),
+]
