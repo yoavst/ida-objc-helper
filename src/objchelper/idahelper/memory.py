@@ -35,7 +35,7 @@ def ea_from_name(name: str) -> int | None:
 
 def set_name(ea: int, name: str, retry: bool = False) -> bool:
     """Set the name of the symbol at EA to the given name"""
-    res = bool(idc.set_name(ea, name, idc.SN_NOWARN | idc.SN_AUTO))
+    res = bool(idc.set_name(ea, name, idc.SN_NOWARN))
     if res or not retry:
         return res
 

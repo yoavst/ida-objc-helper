@@ -8,7 +8,7 @@ from objchelper.plugins.func_renamers.renamer import (
     FuncHandlerVirtualSetter,
     Modifications,
 )
-from objchelper.plugins.func_renamers.visitor import Call, SourceXref
+from objchelper.plugins.func_renamers.visitor import Call
 
 
 class OSSymbolHandler(FuncHandlerByNameWithStringFinder):
@@ -21,11 +21,6 @@ class OSSymbolHandler(FuncHandlerByNameWithStringFinder):
         )
 
         self._cached_symbol_type = tif.from_c_type("OSSymbol*")
-
-    def get_source_xref(self) -> SourceXref | None:
-        if self._cached_symbol_type is None:
-            return None
-        return super().get_source_xref()
 
     def on_call(self, call: Call, modifications: Modifications):
         self._rename_assignee_by_index(modifications, call, 0, modifier=lambda name: f"sym_{name}")
@@ -46,11 +41,6 @@ class IORegistry_MakePlane(FuncHandlerByNameWithStringFinder):
         )
         self._cached_registry_plane_type = tif.from_c_type("IORegistryPlane*")
 
-    def get_source_xref(self) -> SourceXref | None:
-        if self._cached_registry_plane_type is None:
-            return None
-        return super().get_source_xref()
-
     def on_call(self, call: Call, modifications: Modifications):
         self._rename_assignee_by_index(modifications, call, 0, modifier=lambda name: f"plane_{name}")
         self._retype_assignee(modifications, call, self._cached_registry_plane_type)
@@ -63,16 +53,52 @@ IOService_SetProperty = [
         offset,
         name_index=1,
         rename_index=2,
-        rename_prefix="val",
+        rename_prefix="val_",
     )
     for offset in range(0xB8, 0xF0, 8)
 ]
 IOService_GetProperty = FuncHandlerVirtualGetter(
-    "IORegistryEntry::getProperty", tif.from_c_type("IORegistryEntry"), 0x118, name_index=1, rename_prefix="val"
+    "IORegistryEntry::getProperty", tif.from_c_type("IORegistryEntry"), 0x118, name_index=1, rename_prefix="val_"
 )
 IOService_CopyProperty = FuncHandlerVirtualGetter(
-    "IORegistryEntry::copyProperty", tif.from_c_type("IORegistryEntry"), 0x148, name_index=1, rename_prefix="val"
+    "IORegistryEntry::copyProperty", tif.from_c_type("IORegistryEntry"), 0x148, name_index=1, rename_prefix="val_"
 )
 
-GLOBAL_HANDLERS: list[FuncHandler] = [OSSymbol_WithCStringNoCopy, OSSymbol_WithCString, IORegistry_MakePlane()]
+
+class MetaClassConstructor(FuncHandlerByNameWithStringFinder):
+    def __init__(self):
+        super().__init__(
+            "__ZN11OSMetaClassC2EPKcPKS_j",
+            tif.from_func_components(
+                "OSMetaClass*",
+                [
+                    tif.FuncParam("OSMetaClass*", "this"),
+                    tif.FuncParam("const char*", "className"),
+                    tif.FuncParam("const OSMetaClass*", "superClass"),
+                    tif.FuncParam("unsigned int", "classSize"),
+                ],
+            ),
+            "OSMetaClass: preModLoad() wasn't called for class %s (runtime internal error).",
+            is_call=False,
+        )
+
+        self._cached_metaclass_type = tif.from_c_type("OSMetaClass*")
+
+    def on_call(self, call: Call, modifications: Modifications):
+        self._rename_parameter_by_index(
+            modifications,
+            call,
+            name_index=1,
+            rename_index=0,
+            modifier=lambda name: f"__ZN{len(name)}{name}10gMetaclassE",
+        )
+        self._retype_parameter_by_index(modifications, call, 0, self._cached_metaclass_type)
+
+
+GLOBAL_HANDLERS: list[FuncHandler] = [
+    OSSymbol_WithCStringNoCopy,
+    OSSymbol_WithCString,
+    IORegistry_MakePlane(),
+    MetaClassConstructor(),
+]
 LOCAL_HANDLERS: list[FuncHandler] = [*IOService_SetProperty, IOService_GetProperty, IOService_CopyProperty]

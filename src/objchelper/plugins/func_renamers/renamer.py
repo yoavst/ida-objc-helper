@@ -121,7 +121,10 @@ class FuncHandler(abc.ABC):
         elif call.assignee is None:
             print(f"Call {call} has no assignee")
             return
-        if isinstance(new_type, tinfo_t):
+
+        if new_type is None:
+            return
+        elif isinstance(new_type, tinfo_t):
             typ = new_type
         else:
             typ = new_type(call)
@@ -139,7 +142,7 @@ class FuncHandler(abc.ABC):
         modifier: Callable[[ParsedParam], str] | None = None,
     ):
         """
-        Create a handler that will rename the {rename_index} parameter of the call from parameter {name_index}.
+        Rename the {rename_index} parameter of the call from parameter {name_index}.
         Optionally, you can pass a modifier that receives the value of the parameter and returns a new name.
         """
         if name_index >= len(call.params) or rename_index >= len(call.params):
@@ -158,11 +161,36 @@ class FuncHandler(abc.ABC):
         name: str = modifier(param) if modifier else param
         self.__rename_mop(call.params_op[rename_index], name, modifications)
 
+    def _retype_parameter_by_index(
+        self,
+        modifications: Modifications,
+        call: Call,
+        index: int,
+        new_type: tinfo_t | Callable[[Call], tinfo_t | None] | None,
+    ):
+        """
+        Retype the parameter at index {index}
+        """
+        if index >= len(call.params):
+            print(f"Call {call} has only {len(call.params)} parameters, tried to access {index}")
+            return
+
+        if new_type is None:
+            return
+        elif isinstance(new_type, tinfo_t):
+            typ = new_type
+        else:
+            typ = new_type(call)
+            if typ is None:
+                return
+
+        self.__retype_mop(call.params_op[index], typ, modifications)
+
     def _rename_assignee_by_index(
         self, modifications: Modifications, call: Call, index: int, modifier: Callable[[ParsedParam], str] | None = None
     ):
         """
-        Create a handler that will rename the assignee of the call to the given index.
+        Rename the assignee of the call to the given index.
         Optionally, you can pass a modifier that receives the value of the parameter and returns a new name.
         """
 
@@ -195,6 +223,9 @@ class FuncHandler(abc.ABC):
                 print(f"Could not retype mop {op.dstr()} to {typ}: has offset {op.l.off}")
             # Local variable
             modifications.modify_local(op.l.var().name, VariableModification(type=typ))
+        elif op.is_glbaddr():
+            # Deref the type
+            modifications.modify_global(op.a.g, VariableModification(type=typ.get_pointed_object()))
         elif op.t == ida_hexrays.mop_d:
             inner_insn: minsn_t = op.d
             if ida_hexrays.is_mcode_xdsu(inner_insn.opcode):
@@ -228,13 +259,16 @@ class FuncHandler(abc.ABC):
 
 
 class FuncHandlerByNameWithStringFinder(FuncHandler, ABC):
-    def __init__(self, name: str, func_type: tinfo_t, search_string: str, is_call: bool):
+    def __init__(self, name: str, func_type: tinfo_t | None, search_string: str, is_call: bool):
         super().__init__(name)
         self.search_string: str = search_string
-        self.func_type: tinfo_t = func_type
+        self.func_type: tinfo_t | None = func_type
         self.is_call = is_call
 
     def get_source_xref(self) -> SourceXref | None:
+        if self.func_type is None:
+            return None
+
         existing = memory.ea_from_name(self.name)
         if existing is not None:
             return FuncXref(existing)
@@ -261,10 +295,10 @@ class FuncHandlerVirtualGetter(FuncHandler, ABC):
         self, name: str, obj_type: tinfo_t | None, offset: int, name_index: int, rename_prefix: str | None = None
     ):
         super().__init__(name)
-        self.obj_type: tinfo_t = obj_type
+        self.obj_type: tinfo_t | None = obj_type
         self.offset = offset
         self.name_index = name_index
-        self.rename_modifier = lambda n: f"{rename_prefix}_{n}" if rename_prefix is not None else None
+        self.rename_modifier = lambda n: f"{rename_prefix}{n}" if rename_prefix is not None else None
 
     def get_source_xref(self) -> SourceXref | None:
         if self.obj_type is None:
@@ -286,11 +320,11 @@ class FuncHandlerVirtualSetter(FuncHandler, ABC):
         rename_prefix: str | None = None,
     ):
         super().__init__(name)
-        self.obj_type: tinfo_t = obj_type
+        self.obj_type: tinfo_t | None = obj_type
         self.offset = offset
         self.name_index = name_index
         self.rename_index = rename_index
-        self.rename_modifier = lambda n: f"{rename_prefix}_{n}" if rename_prefix is not None else None
+        self.rename_modifier = lambda n: f"{rename_prefix}{n}" if rename_prefix is not None else None
 
     def get_source_xref(self) -> SourceXref | None:
         if self.obj_type is None:
