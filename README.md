@@ -10,7 +10,8 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
       implementations of the virtual method. It requires vtable symbols to be present.
     - When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for
       Obj-C instance methods.
-    - Name globals from `OSSymbol::fromConst*` calls, and locals from `get/setProperty` calls.
+    - Name globals from `OSSymbol::fromConst*` calls, locals from `get/setProperty` calls, ...
+    - Rename and type all global kalloc_type_view. Use their signature to mark fields as pointers for the actual types.
 - Objective-C
     - Hide memory management
       functions - `objc_retain`, `objc_release`, `objc_autorelease`, `objc_retainAutoreleasedReturnValue`.

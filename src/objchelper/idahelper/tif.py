@@ -127,10 +127,6 @@ def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
         print("Not a struct type!")
         return None
 
-    udt_data = udt_type_data_t()
-    if not tif.get_udt_details(udt_data):
-        return None
-
     udm = udm_t()
     udm.offset = offset * 8
     if tif.find_udm(udm, ida_typeinf.STRMEM_OFFSET) == -1:
@@ -157,9 +153,33 @@ def get_parent_classes(tif: tinfo_t) -> list[tinfo_t] | None:
             # Copy the type as it somehow got freed...
             parent_type: tinfo_t = tinfo_t(udm.type)
             classes.append(parent_type)
-            classes.extend(get_parent_classes(parent_type))
+            classes.extend(get_parent_classes(parent_type) or [])
 
     return classes
+
+
+def get_base_offset_for_class(tif: tinfo_t) -> int | None:
+    """Given a cpp class, return the offset in bytes of its first own member"""
+    if not tif.is_struct():
+        return None
+
+    udt_data = get_udt(tif)
+    if udt_data is None:
+        return None
+
+    if not udt_data.is_cppobj():
+        return 0
+
+    for udm in udt_data:
+        udm: udm_t
+        if udm.is_baseclass():
+            continue
+
+        # Convert from bits to bytes
+        return int((udm.offset + 7) / 8)
+
+    # No members
+    return None
 
 
 def get_children_classes(tif: tinfo_t) -> list[tinfo_t] | None:
@@ -176,7 +196,7 @@ def get_children_classes(tif: tinfo_t) -> list[tinfo_t] | None:
             cls = from_struct_name(cls_name)
             if cls is not None:
                 children.append(cls)
-                children.extend(get_children_classes(cls))
+                children.extend(get_children_classes(cls) or [])
     return children
 
 

@@ -70,7 +70,7 @@ class mop_optimizer_t(mop_visitor_t, CounterMixin):
             fi: mcallinfo_t = insn.d.f
 
             # Change name
-            insn.l.make_helper(f"ossignpost_enabled")
+            insn.l.make_helper("ossignpost_enabled")
             self.count()
             # Remove arguments
             fi.args.clear()

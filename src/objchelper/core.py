@@ -8,6 +8,7 @@ from .idahelper import widgets
 from .plugins.cpp_vtbl import jump_to_vtable_component
 from .plugins.func_renamers import local_func_renamer_component, mass_func_renamer_component
 from .plugins.generic_calls_fix import generic_calls_fix_component
+from .plugins.kalloc_type import apply_kalloc_type_component
 from .plugins.obj_this import this_arg_fixer_component
 from .plugins.objc_block import objc_block_args_analyzer_component, objc_block_optimizer_component
 from .plugins.objc_ref import objc_xrefs_component
@@ -69,5 +70,6 @@ plugin_core = PluginCore.factory(
         generic_calls_fix_component,
         local_func_renamer_component,
         mass_func_renamer_component,
+        apply_kalloc_type_component,
     ],
 )

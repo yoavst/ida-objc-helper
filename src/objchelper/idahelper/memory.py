@@ -33,7 +33,7 @@ def ea_from_name(name: str) -> int | None:
     return ea
 
 
-def set_name(ea: int, name: str, retry: bool = False) -> bool:
+def set_name(ea: int, name: str, retry: bool = False, retry_count: int = RETRY_COUNT) -> bool:
     """Set the name of the symbol at EA to the given name"""
     res = bool(idc.set_name(ea, name, idc.SN_NOWARN))
     if res or not retry:
@@ -44,12 +44,13 @@ def set_name(ea: int, name: str, retry: bool = False) -> bool:
         # If the current name already has a postfix, we assume it was set by a previous retry
         return True
 
-    print(f"Failed to set name {name} at {hex(ea)}, retrying with postfix")
-    for i in range(1, RETRY_COUNT + 1):
+    for i in range(1, retry_count + 1):
         new_name = f"{name}_{i}"
         res = bool(idc.set_name(ea, new_name, idc.SN_NOWARN | idc.SN_AUTO))
         if res:
             return res
+
+    return False
 
 
 def is_user_defined_name(ea: int) -> bool:
