@@ -45,14 +45,16 @@ class custom_lvars_modifiers_t(user_lvar_modifier_t):
         return has_matched
 
     @staticmethod
-    def modify_lvar(lvar: lvar_t, modification: VariableModification):
+    def modify_lvar(lvar: lvar_t | lvar_saved_info_t, modification: VariableModification):
         """Modify a single local variable."""
         if modification.name is not None:
             lvar.name = modification.name
-            lvar.set_user_name()
+            if isinstance(lvar, lvar_t):
+                lvar.set_user_name()
         if modification.type is not None:
             lvar.type = modification.type
-            lvar.set_user_type()
+            if isinstance(lvar, lvar_t):
+                lvar.set_user_type()
         if modification.comment is not None:
             lvar.cmt = modification.comment
 
