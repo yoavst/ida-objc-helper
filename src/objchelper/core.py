@@ -3,6 +3,8 @@ __all__ = ["plugin_core"]
 import ida_kernwin
 import idaapi
 
+from objchelper.plugins.jump_to_string import jump_to_string_component
+
 from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
 from .idahelper import widgets
 from .plugins.cpp_vtbl import jump_to_vtable_component
@@ -71,5 +73,6 @@ plugin_core = PluginCore.factory(
         local_func_renamer_component,
         mass_func_renamer_component,
         apply_kalloc_type_component,
+        jump_to_string_component,
     ],
 )

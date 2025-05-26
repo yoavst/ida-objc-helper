@@ -1,3 +1,5 @@
+__all__ = ["find_func_containing_string", "find_static_caller_for_string", "func_xrefs_to", "get_xrefs_to"]
+
 import ida_hexrays
 import ida_xref
 import idaapi

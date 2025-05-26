@@ -23,6 +23,7 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
 - Common
     - Remove `__break` calls.
     - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
+    - Use `Ctrl+S` to jump to function by a string constant found in the code
 
 ## Installation
 
