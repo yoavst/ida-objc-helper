@@ -21,7 +21,7 @@ class Modifications:
         self.lvars = func_lvars
         self._local_modifications: dict[str, VariableModification] = {}
         self._global_modifications: dict[int, VariableModification] = {}
-        self._type_modifications: dict[(str, int), VariableModification] = {}
+        self._type_modifications: dict[tuple[str, int], VariableModification] = {}
         self._func_name: str | None = None
 
     def modify_local(self, name: str, modification: VariableModification):

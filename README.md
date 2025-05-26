@@ -6,6 +6,7 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
 
 - KernelCache
     - Calls to `OSBaseClass::safeMetaCast` apply type info on the result.
+    - Calls to `OSObject_typed_operator_new` apply type info on the result.
     - When the keyboard is on a virtual call (`cls->vcall()`), Shift+X will show a dialog with all the possible
       implementations of the virtual method. It requires vtable symbols to be present.
     - When in a C++ method named Class::func, Ctrl+T will change the first argument to `Class* this`. Also works for
@@ -201,6 +202,35 @@ After:
 ```c++
  IOThunderboltController *v5;
  v5 = OSDynamicCast<IOThunderboltController>(a2);
+```
+
+## Automatic typing for `OSObject_typed_operator_new`
+Run `Edit->Plugins->iOSHelper->Locate all kalloc_type_view` before.
+
+Before:
+```c++
+IOAccessoryPowerSourceItemUSB_TypeC_Current *sub_FFFFFFF009B2AA14()
+{
+  OSObject *v0; // x19
+
+  v0 = (OSObject *)OSObject_typed_operator_new(&UNK_FFFFFFF007DBC480, size: 0x38uLL);
+  OSObject::OSObject(this: v0, &IOAccessoryPowerSourceItemUSB_TypeC_Current::gMetaclass)->__vftable = (OSObject_vtbl *)off_FFFFFFF007D941B0;
+  OSMetaClass::instanceConstructed(this: &IOAccessoryPowerSourceItemUSB_TypeC_Current::gMetaclass);
+  return (IOAccessoryPowerSourceItemUSB_TypeC_Current *)v0;
+}
+```
+
+After:
+```c++
+IOAccessoryPowerSourceItemUSB_TypeC_Current *sub_FFFFFFF009B2AA14()
+{
+  IOAccessoryPowerSourceItemUSB_TypeC_Current *v0; // x19
+
+  v0 = OSObjectTypeAlloc<IOAccessoryPowerSourceItemUSB_TypeC_Current>(0x38uLL);
+  OSObject::OSObject(this: v0, &IOAccessoryPowerSourceItemUSB_TypeC_Current::gMetaclass)->__vftable = (OSObject_vtbl *)off_FFFFFFF007D941B0;
+  OSMetaClass::instanceConstructed(this: &IOAccessoryPowerSourceItemUSB_TypeC_Current::gMetaclass);
+  return v0;
+}
 ```
 
 ## Jump to virtual call

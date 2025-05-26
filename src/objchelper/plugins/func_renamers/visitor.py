@@ -5,7 +5,7 @@ import ida_hexrays
 from ida_hexrays import mba_t, mcallarg_t, minsn_t, mop_t
 from ida_typeinf import tinfo_t
 
-from objchelper.idahelper import tif
+from objchelper.idahelper import memory, tif
 from objchelper.idahelper.microcode import mop
 from objchelper.idahelper.microcode.visitors import extended_microcode_visitor_t
 from objchelper.plugins.generic_calls_fix import CAST_FUNCTION_NAMES
@@ -99,7 +99,10 @@ class Call:
     """The operands of the call instruction"""
     params: list[ParsedParam]
     """Parsed params of the call instruction"""
+    params_names: list[str | None]
+    """If the parameter is a global variable (or reference to it), return its name"""
     assignee: mop_t | None
+    """The assignee of this call instruction"""
 
     def __str__(self):
         params_str = ", ".join([
@@ -181,8 +184,9 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         """Build a Call object for the given instruction."""
         params: list[mcallarg_t] = list(ins.d.f.args)
         parsed_params = [_parse_param(param) for param in params]
+        parsed_params_name = [_parse_param_name(param) for param in params]
         assignee = _try_extract_assignee(self.parents)
-        return Call(self.mba.entry_ea, ins.ea, params, parsed_params, assignee)
+        return Call(self.mba.entry_ea, ins.ea, params, parsed_params, parsed_params_name, assignee)
 
 
 def _try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
@@ -228,6 +232,16 @@ def _parse_param(param: mcallarg_t) -> ParsedParam:
     if _is_string_param(param):
         return mop.get_str(param)
     return mop.get_const_int(param)
+
+
+def _parse_param_name(param: mcallarg_t) -> str | None:
+    """Try to parse the parameter global name"""
+    if param.t == ida_hexrays.mop_v:
+        return memory.name_from_ea(param.g)
+    elif param.t == ida_hexrays.mop_a and param.a.t == ida_hexrays.mop_v:
+        return memory.name_from_ea(param.a.g)
+
+    return None
 
 
 def _is_string_param(param: mcallarg_t) -> bool:
