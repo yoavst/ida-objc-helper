@@ -41,10 +41,18 @@ class Modifications:
 
     def _apply(self):
         """Apply the modifications"""
+        self._fix_modifications_name()
         self._apply_local_modifications()
         self._apply_global_modifications()
         self._apply_func_name()
         self._apply_type_modifications()
+
+    def _fix_modifications_name(self):
+        fix_name = lambda s: None if s is None else s.replace("-", "_").replace(" ", "_")
+        for modification in self._local_modifications.values():
+            modification.name = fix_name(modification.name)
+        for modification in self._global_modifications.values():
+            modification.name = fix_name(modification.name)
 
     def _apply_local_modifications(self):
         """Apply local modifications"""
