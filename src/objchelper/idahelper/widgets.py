@@ -1,7 +1,7 @@
 import ida_hexrays
 import ida_kernwin
 import idaapi
-from ida_hexrays import citem_t
+from ida_hexrays import cexpr_t, cfunc_t
 from ida_kernwin import Choose
 
 
@@ -21,7 +21,7 @@ def refresh_widget(widget: "TWidget *") -> None:  # noqa: F722
     vdui.refresh_view(True)
 
 
-def get_current_citem() -> citem_t | None:
+def get_current_citem() -> cexpr_t | None:
     """Get the current citem in the active pseudocode window."""
     w = ida_kernwin.get_current_widget()
     if ida_kernwin.get_widget_type(w) != ida_kernwin.BWN_PSEUDOCODE:
@@ -35,6 +35,19 @@ def get_current_citem() -> citem_t | None:
         return None
 
     return vu.item.e
+
+
+def get_current_function() -> cfunc_t | None:
+    """Get the current function in the active pseudocode window."""
+    w = ida_kernwin.get_current_widget()
+    if ida_kernwin.get_widget_type(w) != ida_kernwin.BWN_PSEUDOCODE:
+        return None
+
+    vu = ida_hexrays.get_widget_vdui(w)
+    if vu is None:
+        return None
+
+    return vu.cfunc
 
 
 def jump_to(ea: int) -> None:
