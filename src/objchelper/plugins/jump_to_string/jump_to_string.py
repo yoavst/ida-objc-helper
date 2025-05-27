@@ -22,7 +22,7 @@ def show_xrefs_to_string(ea: int):
     else:
         print("Multiple xrefs to the string:")
         for xref in s_xrefs:
-            print(xref)
+            print_xref(xref)
 
 
 def print_xref(ea: int, match: str | None = None):
