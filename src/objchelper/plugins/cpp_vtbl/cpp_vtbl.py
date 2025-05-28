@@ -78,7 +78,11 @@ def get_vtable_xrefs(vtable_type: tinfo_t, offset: int) -> dict[int, str]:
     """Given a vtable type and offset, return the address of the function at that offset."""
     actual_type = get_actual_class_from_vtable(vtable_type)
     children_classes = tif.get_children_classes(actual_type)
-    pure_virtual_ea = memory.ea_from_name("___cxa_pure_virtual") or memory.ea_from_name("__cxa_pure_virtual")
+    pure_virtual_ea = (
+        memory.ea_from_name("___cxa_pure_virtual")
+        or memory.ea_from_name("__cxa_pure_virtual")
+        or memory.ea_from_name("_cxa_pure_virtual")
+    )
     matches: dict[int, str] = {}  # addr -> class_name
 
     # Get the base implementation, either from this class or its parent if it is inherited
