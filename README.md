@@ -265,5 +265,5 @@ your IDE.
   Alternatively, you can create `idapython.pth` in `$VENV_FOLDER/Lib/site-packages` and add the path to it.
 
 Inside IDA, you can use `ioshelper.reload()` to reload the plugin during development.
-If you modify `IS_DEBUG = True` inside `src/objchelper/base/reloadable_plugin.py`, then you can use `F2` to reload the
+If you create file name `DEBUG` inside `src/`, then you can use `F2` to reload the
 plugin.

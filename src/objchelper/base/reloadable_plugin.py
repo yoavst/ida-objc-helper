@@ -4,6 +4,7 @@
 # https://github.com/gaasedelen/lucid/blob/master/plugins/lucid/core.py
 import abc
 import dataclasses
+import os
 import sys
 from collections.abc import Callable
 from typing import Protocol
@@ -15,7 +16,7 @@ import idaapi
 from ida_idaapi import plugin_t
 from ida_kernwin import UI_Hooks, action_desc_t
 
-IS_DEBUG = False
+IS_DEBUG = os.path.exists(os.path.join(os.path.dirname(__file__), "..", "..", "DEBUG"))
 
 
 class Component:
