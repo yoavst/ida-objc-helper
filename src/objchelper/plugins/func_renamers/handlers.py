@@ -1,6 +1,8 @@
 __all__ = ["GLOBAL_HANDLERS", "LOCAL_HANDLERS"]
 
-from objchelper.idahelper import kernelcache, memory, tif
+import idautils
+
+from objchelper.idahelper import functions, kernelcache, memory, tif, xrefs
 from objchelper.plugins.func_renamers.renamer import (
     FuncHandler,
     FuncHandlerByNameWithStringFinder,
@@ -115,6 +117,84 @@ class peParseBootArgn(FuncHandler):
                 self._retype_parameter_by_index(modifications, call, 1, tif.pointer_of(new_type))
 
 
+class StackCheckFail(FuncHandler):
+    def __init__(self):
+        super().__init__("__stack_chk_fail")
+
+    def get_source_xref(self) -> SourceXref | None:
+        existing = memory.ea_from_name(self.name)
+        if existing is not None:
+            return FuncXref(existing)
+
+        searched = list(xrefs.string_xrefs_to("stack_protector.c"))
+        if searched is None:
+            print("[Error] Could not find xrefs to 'stack_protector.c' for", self.name)
+            return None
+        ldr_addr = searched[0]
+
+        func_start_ea = StackCheckFail.get_previous_pacibsp(ldr_addr)
+        func_end_ea = StackCheckFail.get_after_next_bl(ldr_addr)
+        if func_start_ea is None or func_end_ea is None:
+            print("[Error] Could not find function boundaries:", self.name)
+            return None
+
+        if not functions.is_in_function(func_start_ea) and not functions.add_function(func_start_ea, func_end_ea):
+            print(f"[Error] Could not add function {self.name} at {func_start_ea:#x}")
+            return None
+
+        if not tif.apply_tinfo_to_ea(tif.from_func_components("void", [tif.FuncParam("void")]), func_start_ea):
+            print(f"[Error] Could not apply tinfo to function {self.name} at {func_start_ea:#x}")
+            return None
+
+        if not functions.apply_flag_to_function(func_start_ea, functions.FLAG_NO_RETURN):
+            print(f"[Error] Could not apply no-return flag to function {self.name} at {func_start_ea:#x}")
+            return None
+
+        # For some reason I cannot set the name of the function to the original name, as IDA hides call to the function
+        # So we use a different name
+        if not memory.set_name(func_start_ea, "panic_stack_check_failed", retry=True):
+            print(f"[Error] Could not set name for function {self.name} at {func_start_ea:#x}")
+            return None
+
+        return FuncXref(func_start_ea)
+
+    @staticmethod
+    def get_previous_pacibsp(call_ea: int) -> int | None:
+        """Given a call, search previous instructions to find a movk call"""
+        insn = idautils.DecodeInstruction(call_ea)
+        if not insn:
+            return None
+
+        for _ in range(10):
+            insn, _ = idautils.DecodePrecedingInstruction(insn.ea)
+            # No more instructions in this execution flow
+            if insn is None:
+                break
+            if insn.get_canon_mnem() == "PAC":
+                return insn.ea
+        return None
+
+    @staticmethod
+    def get_after_next_bl(call_ea: int) -> int | None:
+        """Given a call, search previous instructions to find a movk call"""
+        insn = idautils.DecodeInstruction(call_ea)
+        if not insn:
+            return None
+
+        for _ in range(10):
+            insn = idautils.DecodeInstruction(insn.ea + insn.size)
+            # No more instructions in this execution flow
+            if insn is None:
+                break
+            if insn.get_canon_mnem() == "BL":
+                return insn.ea + insn.size
+        return None
+
+    def on_call(self, call: Call, modifications: Modifications):
+        # Do nothing on call, we just want to rename the function
+        pass
+
+
 if kernelcache.is_kernelcache():
     GLOBAL_HANDLERS: list[FuncHandler] = [
         OSSymbol_WithCStringNoCopy,
@@ -127,6 +207,7 @@ if kernelcache.is_kernelcache():
         IOService_GetProperty,
         IOService_CopyProperty,
         peParseBootArgn(),
+        StackCheckFail(),
     ]
 else:
     GLOBAL_HANDLERS = []

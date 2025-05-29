@@ -1,5 +1,7 @@
 __all__ = ["find_func_containing_string", "find_static_caller_for_string", "func_xrefs_to", "get_xrefs_to"]
 
+from collections.abc import Iterator
+
 import ida_hexrays
 import ida_xref
 import idautils
@@ -25,14 +27,21 @@ def func_xrefs_to(func_ea: int) -> set[int]:
     return xrefs_in_funcs
 
 
-def find_func_containing_string(s: str) -> int | None:
+def string_xrefs_to(s: str) -> Iterator[int]:
     """Assume there is a single function that contains s, return the EA of call function"""
     # There might be multiple references to the string, so we need to find the one that is inside a function
     for item in strings.find_strs(s):
-        for xref_ea in get_xrefs_to(item.ea):
-            func_start = functions.get_start_of_function(xref_ea)
-            if func_start is not None:
-                return func_start
+        yield from get_xrefs_to(item.ea)
+    return None
+
+
+def find_func_containing_string(s: str) -> int | None:
+    """Assume there is a single function that contains s, return the EA of call function"""
+    # There might be multiple references to the string, so we need to find the one that is inside a function
+    for xref_ea in string_xrefs_to(s):
+        func_start = functions.get_start_of_function(xref_ea)
+        if func_start is not None:
+            return func_start
     return None
 
 

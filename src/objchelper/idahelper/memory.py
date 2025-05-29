@@ -46,7 +46,7 @@ def set_name(ea: int, name: str, retry: bool = False, retry_count: int = RETRY_C
 
     for i in range(1, retry_count + 1):
         new_name = f"{name}_{i}"
-        res = bool(idc.set_name(ea, new_name, idc.SN_NOWARN | idc.SN_AUTO))
+        res = bool(idc.set_name(ea, new_name, idc.SN_NOWARN))
         if res:
             return res
 
