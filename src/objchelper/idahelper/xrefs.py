@@ -2,12 +2,10 @@ __all__ = ["find_func_containing_string", "find_static_caller_for_string", "func
 
 import ida_hexrays
 import ida_xref
-import idaapi
 import idautils
-from ida_funcs import func_t
 from ida_hexrays import minsn_t, mop_t
 
-from objchelper.idahelper import strings
+from objchelper.idahelper import functions, strings
 from objchelper.idahelper.microcode import mba
 from objchelper.idahelper.microcode.visitors import extended_microcode_visitor_t
 
@@ -21,9 +19,9 @@ def func_xrefs_to(func_ea: int) -> set[int]:
     """Get all xrefs to the given EA, grouped by function"""
     xrefs_in_funcs = set()
     for xref_ea in get_xrefs_to(func_ea):
-        func: func_t = idaapi.get_func(xref_ea)
-        if func is not None:
-            xrefs_in_funcs.add(func.start_ea)
+        func_start = functions.get_start_of_function(xref_ea)
+        if func_start is not None:
+            xrefs_in_funcs.add(func_start)
     return xrefs_in_funcs
 
 
@@ -32,9 +30,9 @@ def find_func_containing_string(s: str) -> int | None:
     # There might be multiple references to the string, so we need to find the one that is inside a function
     for item in strings.find_strs(s):
         for xref_ea in get_xrefs_to(item.ea):
-            func: func_t = idaapi.get_func(xref_ea)
-            if func is not None:
-                return func.start_ea
+            func_start = functions.get_start_of_function(xref_ea)
+            if func_start is not None:
+                return func_start
     return None
 
 

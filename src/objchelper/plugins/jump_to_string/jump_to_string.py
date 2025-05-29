@@ -1,8 +1,6 @@
-import ida_funcs
 import ida_kernwin
-from ida_funcs import func_t
 
-from objchelper.idahelper import memory, strings, widgets, xrefs
+from objchelper.idahelper import functions, memory, strings, widgets, xrefs
 
 
 def find_matching_string(target_str: str) -> list[tuple[int, str]]:
@@ -26,15 +24,15 @@ def show_xrefs_to_string(ea: int):
 
 
 def print_xref(ea: int, match: str | None = None):
-    func: func_t | None = ida_funcs.get_func(ea)
-    if func is None:
+    func_start = functions.get_start_of_function(ea)
+    if func_start is None:
         print(f"{ea:X}")
         return
 
-    func_name = memory.name_from_ea(func.start_ea) or "<unknown>"
+    func_name = memory.name_from_ea(func_start) or "<unknown>"
     match_str = "" if match is None else f": {match}"
 
-    print(f"{ea:X} at {func_name}+{ea - func.start_ea:X}{match_str}")
+    print(f"{ea:X} at {func_name}+{ea - func_start:X}{match_str}")
 
 
 def jump_to_string_ask():

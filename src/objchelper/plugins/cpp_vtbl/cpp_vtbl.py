@@ -1,9 +1,8 @@
-import ida_funcs
 import ida_hexrays
 from ida_hexrays import cexpr_t
 from ida_typeinf import tinfo_t
 
-from objchelper.idahelper import cpp, memory, tif, widgets
+from objchelper.idahelper import cpp, functions, memory, tif, widgets
 from objchelper.idahelper.widgets import EAChoose
 
 
@@ -150,7 +149,7 @@ def get_vtable_entry(cls: tinfo_t, offset: int, pure_virtual_ea: int) -> int | N
     # Read the func at the relevant offset
     vtable_entry = vtable_ea + (2 * 8 + offset)
     vtable_func_ea = memory.qword_from_ea(vtable_entry)
-    if pure_virtual_ea == vtable_func_ea or ida_funcs.get_func(vtable_func_ea) is None:
+    if pure_virtual_ea == vtable_func_ea or functions.is_in_function(vtable_func_ea) is None:
         return None
 
     return vtable_func_ea
