@@ -119,13 +119,14 @@ class peParseBootArgn(FuncHandler):
 
 class StackCheckFail(FuncHandler):
     def __init__(self):
-        super().__init__("__stack_chk_fail")
+        # For some reason I cannot set the name of the function to the original name, as IDA hides call to the function
+        # So we use a different name
+        super().__init__("__xnu_stack_check_fail")
 
     def get_source_xref(self) -> SourceXref | None:
         existing = memory.ea_from_name(self.name)
         if existing is not None:
             return FuncXref(existing)
-
         searched = list(xrefs.string_xrefs_to("stack_protector.c"))
         if searched is None:
             print("[Error] Could not find xrefs to 'stack_protector.c' for", self.name)
@@ -150,9 +151,7 @@ class StackCheckFail(FuncHandler):
             print(f"[Error] Could not apply no-return flag to function {self.name} at {func_start_ea:#x}")
             return None
 
-        # For some reason I cannot set the name of the function to the original name, as IDA hides call to the function
-        # So we use a different name
-        if not memory.set_name(func_start_ea, "panic_stack_check_failed", retry=True):
+        if not memory.set_name(func_start_ea, self.name, retry=True):
             print(f"[Error] Could not set name for function {self.name} at {func_start_ea:#x}")
             return None
 
