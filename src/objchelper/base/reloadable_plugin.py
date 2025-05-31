@@ -3,6 +3,7 @@
 # As such, I find it acceptable to use this code under the same license as the rest of the plugin.
 # https://github.com/gaasedelen/lucid/blob/master/plugins/lucid/core.py
 import abc
+import contextlib
 import dataclasses
 import os
 import sys
@@ -56,11 +57,11 @@ class PluginCoreFactory(Protocol):
 
 class PluginCore:
     def __init__(
-        self,
-        name: str,
-        component_factories: list[ComponentFactory],
-        defer_load: bool = False,
-        should_mount: bool = True,
+            self,
+            name: str,
+            component_factories: list[ComponentFactory],
+            defer_load: bool = False,
+            should_mount: bool = True,
     ):
         self.name = name
         self.loaded = False
@@ -204,7 +205,8 @@ class ReloadablePlugin(abc.ABC, plugin_t):
             module_name for module_name in sys.modules if module_name.startswith(self._base_package_name)
         ]
         for module_name in modules_to_reload:
-            idaapi.require(module_name)
+            with contextlib.suppress(ModuleNotFoundError):
+                idaapi.require(module_name)
 
         # Load the plugin core
         self.core = self._plugin_core_factory(defer_load=False, should_mount=was_mounted)
@@ -309,9 +311,9 @@ class UIActionsComponent(Component):
                 return False
 
             if action.menu_location is not None and not idaapi.attach_action_to_menu(
-                action.menu_location,
-                action.id,
-                0,
+                    action.menu_location,
+                    action.id,
+                    0,
             ):
                 print(
                     f"[{self.name}] failed to attach action {action.id} to menu {action.menu_location}, aborting load."

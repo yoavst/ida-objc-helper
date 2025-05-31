@@ -3,24 +3,24 @@ __all__ = ["plugin_core"]
 import ida_kernwin
 import idaapi
 
-from objchelper.plugins.jump_to_string import jump_to_string_component
+from objchelper.plugins.common.jump_to_string import jump_to_string_component
 
-from .base.reloadable_plugin import PluginCore, UIAction, UIActionsComponent
-from .idahelper import widgets
-from .plugins.cpp_vtbl import jump_to_vtable_component
-from .plugins.func_renamers import local_func_renamer_component, mass_func_renamer_component
-from .plugins.generic_calls_fix import generic_calls_fix_component
-from .plugins.kalloc_type import apply_kalloc_type_component
-from .plugins.obj_this import this_arg_fixer_component
-from .plugins.objc_block import objc_block_args_analyzer_component, objc_block_optimizer_component
-from .plugins.objc_ref import objc_xrefs_component
-from .plugins.objc_refcnt import component as objc_refcount_component
-from .plugins.objc_sugar import objc_sugar_component
-from .plugins.oslog import component as oslog_component
+from .base.reloadable_plugin import ComponentFactory, PluginCore, UIAction, UIActionsComponent
+from .idahelper import file_format, widgets
+from .plugins.common.clang_blocks import clang_block_args_analyzer_component, clang_block_optimizer_component
+from .plugins.kernelcache.cpp_vtbl import jump_to_vtable_component
+from .plugins.kernelcache.func_renamers import local_func_renamer_component, mass_func_renamer_component
+from .plugins.kernelcache.generic_calls_fix import generic_calls_fix_component
+from .plugins.kernelcache.kalloc_type import apply_kalloc_type_component
+from .plugins.kernelcache.obj_this import this_arg_fixer_component
+from .plugins.objc.objc_ref import objc_xrefs_component
+from .plugins.objc.objc_refcnt import component as objc_refcount_component
+from .plugins.objc.objc_sugar import objc_sugar_component
+from .plugins.objc.oslog import component as oslog_component
 
 TOGGLE_ACTION_ID = "objchelper:toggle"
 
-toggle_objc_helper_mount_component = UIActionsComponent.factory(
+toggle_ios_helper_mount_component = UIActionsComponent.factory(
     "toggle plugin mounting",
     [
         lambda core: UIAction(
@@ -57,22 +57,45 @@ class ObjcHelperToggleActionHandler(ida_kernwin.action_handler_t):
         return idaapi.AST_ENABLE_ALWAYS
 
 
-plugin_core = PluginCore.factory(
-    "iOSHelper",
-    [
+def get_modules_for_file() -> list[ComponentFactory]:
+    return [
+        *shared_modules(),
+        *(objc_plugins() if file_format.is_objc() else []),
+        *(kernel_cache_plugins() if file_format.is_kernelcache() else []),
+    ]
+
+
+def shared_modules() -> list[ComponentFactory]:
+    return [
+        toggle_ios_helper_mount_component,
+        clang_block_args_analyzer_component,
+        clang_block_optimizer_component,
+        jump_to_string_component,
+    ]
+
+
+def objc_plugins() -> list[ComponentFactory]:
+    return [
         objc_refcount_component,
         oslog_component,
-        toggle_objc_helper_mount_component,
         objc_xrefs_component,
         objc_sugar_component,
-        objc_block_args_analyzer_component,
-        objc_block_optimizer_component,
+
+    ]
+
+
+def kernel_cache_plugins() -> list[ComponentFactory]:
+    return [
         this_arg_fixer_component,
         jump_to_vtable_component,
         generic_calls_fix_component,
         local_func_renamer_component,
         mass_func_renamer_component,
         apply_kalloc_type_component,
-        jump_to_string_component,
-    ],
+    ]
+
+
+plugin_core = PluginCore.factory(
+    "iOSHelper",
+    get_modules_for_file(),
 )
