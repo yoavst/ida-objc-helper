@@ -57,11 +57,11 @@ class PluginCoreFactory(Protocol):
 
 class PluginCore:
     def __init__(
-            self,
-            name: str,
-            component_factories: list[ComponentFactory],
-            defer_load: bool = False,
-            should_mount: bool = True,
+        self,
+        name: str,
+        component_factories: list[ComponentFactory],
+        defer_load: bool = False,
+        should_mount: bool = True,
     ):
         self.name = name
         self.loaded = False
@@ -311,9 +311,9 @@ class UIActionsComponent(Component):
                 return False
 
             if action.menu_location is not None and not idaapi.attach_action_to_menu(
-                    action.menu_location,
-                    action.id,
-                    0,
+                action.menu_location,
+                action.id,
+                0,
             ):
                 print(
                     f"[{self.name}] failed to attach action {action.id} to menu {action.menu_location}, aborting load."

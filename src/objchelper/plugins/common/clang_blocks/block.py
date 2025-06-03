@@ -96,11 +96,11 @@ class BlockBaseFieldsAssignments:
     def is_completed(self) -> bool:
         """Check if all base fields have been assigned"""
         return (
-                self.isa is not None
-                and self.flags is not None
-                and self.reserved is not None
-                and self.invoke is not None
-                and self.descriptor is not None
+            self.isa is not None
+            and self.flags is not None
+            and self.reserved is not None
+            and self.invoke is not None
+            and self.descriptor is not None
         )
 
     def add_assignment(self, assignment: StructFieldAssignment) -> bool:

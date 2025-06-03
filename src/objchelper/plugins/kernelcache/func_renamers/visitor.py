@@ -212,7 +212,7 @@ def _try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:
         # If this is a dynamic cast, we can try to unwrap it
         call: minsn_t = parents[-3]
         if call.l.t == ida_hexrays.mop_h and any(
-                call.l.helper.startswith(cast_name) for cast_name in CAST_FUNCTION_NAMES
+            call.l.helper.startswith(cast_name) for cast_name in CAST_FUNCTION_NAMES
         ):
             # Skip the cast helper and try to extract the assignee from the next parent
             return _try_extract_assignee(parents[:-3])

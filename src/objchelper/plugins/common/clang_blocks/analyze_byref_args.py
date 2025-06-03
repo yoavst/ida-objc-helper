@@ -161,10 +161,10 @@ class ScanForRefArg:
 
     def _isa(self, value: mop_t, offset: int) -> None:
         if (
-                offset not in self._possible_stack_offsets
-                or value.size != 8
-                or value.t != ida_hexrays.mop_n
-                or value.unsigned_value() != 0
+            offset not in self._possible_stack_offsets
+            or value.size != 8
+            or value.t != ida_hexrays.mop_n
+            or value.unsigned_value() != 0
         ):
             self._state = ScanForBlockArgByRefState.initial()
             return

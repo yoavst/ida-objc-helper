@@ -71,16 +71,15 @@ def shared_modules() -> list[ComponentFactory]:
         clang_block_args_analyzer_component,
         clang_block_optimizer_component,
         jump_to_string_component,
+        objc_refcount_component,
     ]
 
 
 def objc_plugins() -> list[ComponentFactory]:
     return [
-        objc_refcount_component,
         oslog_component,
         objc_xrefs_component,
         objc_sugar_component,
-
     ]
 
 
