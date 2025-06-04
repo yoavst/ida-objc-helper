@@ -51,7 +51,10 @@ def get_str(mop: mop_t) -> str | None:
 def get_const_int(mop: mop_t, is_signed: bool = False) -> int | None:
     """Given a mop representing a const int, return its value"""
     if mop.t == ida_hexrays.mop_n:
-        return mop.value(is_signed)
+        if is_signed:
+            return mop.signed_value()
+        else:
+            return mop.unsigned_value()
 
 
 def get_local_variable(mop: mop_t) -> lvar_t | None:

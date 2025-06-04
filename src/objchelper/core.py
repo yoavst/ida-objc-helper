@@ -4,6 +4,7 @@ import ida_kernwin
 import idaapi
 
 from objchelper.plugins.common.jump_to_string import jump_to_string_component
+from objchelper.plugins.common.range_condition import range_condition_optimizer_component
 
 from .base.reloadable_plugin import ComponentFactory, PluginCore, UIAction, UIActionsComponent
 from .idahelper import file_format, widgets
@@ -72,6 +73,7 @@ def shared_modules() -> list[ComponentFactory]:
         clang_block_optimizer_component,
         jump_to_string_component,
         objc_refcount_component,
+        range_condition_optimizer_component,
     ]
 
 

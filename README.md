@@ -24,6 +24,7 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
     - Remove `__break` calls.
     - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
     - Use `Ctrl+S` to jump to function by a string constant found in the code
+    - Helpful comments near ranged conditions
 
 ## Installation
 
@@ -34,6 +35,26 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
 3. Restart IDA.
 
 ## Examples
+
+### Solve condition constraints
+
+Before:
+
+```c
+if ( valueLength - 21 <= 0xFFFFFFFFFFFFFFEFLL ) 
+{ 
+  ... 
+}
+```
+
+After:
+
+```c
+if ( valueLength - 21 <= 0xFFFFFFFFFFFFFFEFLL )// 4 < valueLength < 21
+{
+  ...
+}
+```
 
 ### Remove `__break`
 
