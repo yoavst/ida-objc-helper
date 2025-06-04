@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import TypeVar
 
 import ida_hexrays
@@ -6,16 +7,23 @@ from ida_hexrays import mba_t, mblock_t, minsn_t, mop_t
 from objchelper.idahelper.microcode import mba, mblock
 
 
+class TreeVisitOrder(Enum):
+    PRE_ORDER = 0
+    POST_ORDER = 1
+
+
 class extended_microcode_visitor_t:
-    def __init__(self):
+    def __init__(self, visit_order: TreeVisitOrder = TreeVisitOrder.PRE_ORDER):
+        self.order: TreeVisitOrder = visit_order
+        """How should we visit the tree"""
         self.mba: mba_t
         """The current function being visited"""
         self.blk: mblock_t
         """The current block being visited"""
-        self.top_ins: minsn_t
-        """The top instruction that being visited"""
         self.parents: list[mop_t | minsn_t]
         """List of parents for the current operand, which can be either a mop or a minsn"""
+        self.top_ins: minsn_t
+        """The top instruction"""
         self.prune: bool
         """Should skip sub-operands of the current operand? can be set from visit_X() methods"""
 
@@ -28,68 +36,89 @@ class extended_microcode_visitor_t:
         return 0
 
     def __visit_minsn(self, ins: minsn_t) -> int:
-        # Visit the instruction first
-        res = assert_not_none(self._visit_insn(ins))
-        # If we should stop visit children (stop visiting or prune), return immediately
-        if res != 0 or self.prune:
-            self.prune = False
-            return res
+        if self.order == TreeVisitOrder.PRE_ORDER:
+            state, diff = 0, 1
+        else:
+            state, diff = 1, -1
 
-        # Visit the instruction operands
-        self.parents.append(ins)
-        for op in [ins.l, ins.r, ins.d]:
-            if op is None:
-                continue
+        while state in [0, 1]:
+            if state == 0:
+                # Visit the instruction
+                res = assert_not_none(self._visit_insn(ins))
+                # If we should stop visit children (stop visiting or prune), return immediately
+                if res != 0 or self.prune:
+                    self.prune = False
+                    return res
+            elif state == 1:
+                # Visit the instruction operands
+                self.parents.append(ins)
+                for op in [ins.l, ins.r, ins.d]:
+                    if op is None:
+                        continue
 
-            res = self.__visit_mop(op)
-            if res != 0:
-                return res
-        self.parents.pop()
+                    res = self.__visit_mop(op)
+                    if res != 0:
+                        return res
+                self.parents.pop()
+
+            # Update state
+            state += diff
 
         return 0
 
     def __visit_mop(self, op: mop_t) -> int:  # noqa: C901
+        if self.order == TreeVisitOrder.PRE_ORDER:
+            state, diff = 0, 1
+        else:
+            state, diff = 1, -1
+
         if op.t == 0:
             # Invalid mop, skip.
             # It usually happens where there is a minsn embedded inside a mop.
             # The destination mop will exist in this case, but would be invalid.
             return 0
 
-        # Visit the mop first
-        res = assert_not_none(self._visit_mop(op))
-        if res != 0 or self.prune:
-            self.prune = False
-            return res
+        while state in [0, 1]:
+            if state == 0:
+                # Visit the mop
+                res = assert_not_none(self._visit_mop(op))
+                if res != 0 or self.prune:
+                    self.prune = False
+                    return res
+            elif state == 1:
+                # Visit children
+                minsn: minsn_t | None = None
+                mops: list[mop_t] = []
 
-        minsn: minsn_t | None = None
-        mops: list[mop_t] = []
+                if op.t == ida_hexrays.mop_d:
+                    minsn = op.d
+                elif op.t == ida_hexrays.mop_f:
+                    mops.extend(op.f.args)
+                elif op.t == ida_hexrays.mop_a:
+                    mops.append(op.a)
+                elif op.t == ida_hexrays.mop_p:
+                    mops.append(op.pair.lop)
+                    mops.append(op.pair.hop)
 
-        if op.t == ida_hexrays.mop_d:
-            minsn = op.d
-        elif op.t == ida_hexrays.mop_f:
-            mops.extend(op.f.args)
-        elif op.t == ida_hexrays.mop_a:
-            mops.append(op.a)
-        elif op.t == ida_hexrays.mop_p:
-            mops.append(op.pair.lop)
-            mops.append(op.pair.hop)
+                # Go over all children
+                self.parents.append(op)
 
-        # Go over all children
-        self.parents.append(op)
+                for mop in mops:
+                    if mop is None:
+                        continue
+                    res = self.__visit_mop(mop)
+                    if res != 0:
+                        return res
 
-        for mop in mops:
-            if mop is None:
-                continue
-            res = self.__visit_mop(mop)
-            if res != 0:
-                return res
+                if minsn is not None:
+                    res = self.__visit_minsn(minsn)
+                    if res != 0:
+                        return res
 
-        if minsn is not None:
-            res = self.__visit_minsn(minsn)
-            if res != 0:
-                return res
+                self.parents.pop()
 
-        self.parents.pop()
+            # Update state
+            state += diff
 
         return 0
 
