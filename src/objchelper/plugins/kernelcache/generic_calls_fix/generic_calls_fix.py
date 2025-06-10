@@ -12,7 +12,9 @@ from objchelper.idahelper.microcode import mcallarg, minsn, mop
 
 CAST_FUNCTIONS: dict[str | re.Pattern, str] = {
     "OSMetaClassBase::safeMetaCast": "OSDynamicCast",
+    "__ZN15OSMetaClassBase12safeMetaCastEPKS_PK11OSMetaClass": "OSDynamicCast",
     "OSMetaClassBase::requiredMetaCast": "OSRequiredCast",
+    "__ZN15OSMetaClassBase16requiredMetaCastEPKS_PK11OSMetaClass": "OSDynamicCast",
 }
 
 ALLOC_FUNCTION: dict[str | re.Pattern, str] = {"OSObject_typed_operator_new": "OSObjectTypeAlloc"}
