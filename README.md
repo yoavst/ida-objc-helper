@@ -25,6 +25,7 @@ A plugin for IDA Pro 9.0+ to help with iOS code analysis.
     - collapse blocks initializers and detect `__block` variables (use Alt+Shift+S to trigger detection).
     - Use `Ctrl+S` to jump to function by a string constant found in the code
     - Helpful comments near ranged conditions
+    - Try to detect outline functions and mark them as such.
 
 ## Installation
 
