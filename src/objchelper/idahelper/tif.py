@@ -1,4 +1,5 @@
 import dataclasses
+from typing import TypeVar
 
 import ida_hexrays
 import ida_typeinf
@@ -135,7 +136,7 @@ def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
     return udm
 
 
-def get_parent_classes(tif: tinfo_t) -> list[tinfo_t] | None:
+def get_parent_classes(tif: tinfo_t, including_current_type: bool = False) -> list[tinfo_t] | None:
     """Get parent classes of a struct."""
     if not tif.is_struct():
         return None
@@ -148,6 +149,10 @@ def get_parent_classes(tif: tinfo_t) -> list[tinfo_t] | None:
         return None
 
     classes = []
+
+    if including_current_type:
+        classes.append(tif)
+
     for udm in udt_data:
         if udm.is_baseclass():
             # Copy the type as it somehow got freed...
@@ -224,3 +229,54 @@ def set_udm_type(tif: tinfo_t, udm: udm_t, udm_type: tinfo_t) -> bool:
 def create_from_c_decl(decl: str) -> bool:
     """Create a new type definition from `decl`"""
     return not ida_typeinf.idc_parse_types(decl, 0)
+
+
+def get_common_ancestor(types: list[tinfo_t]) -> tinfo_t | None:
+    """Given list of C++ types, return their common ancestor"""
+    if not types:
+        return None
+    if len(types) == 1:
+        return types[0]
+
+    current_common: tinfo_t = types[0]
+    current_common_parents: list[tinfo_t] = get_parent_classes(current_common, True) or []
+    for typ in types:
+        if typ == current_common:
+            continue
+        typ_parents = get_parent_classes(typ, True) or []
+        ancestor_res = _find_common_ancestor(current_common_parents, typ_parents)
+        if ancestor_res is None:
+            print(f"[Error] could not find common ancestor between {current_common.dstr()} and {typ.dstr()}")
+            return None
+        new_common, new_common_parents = ancestor_res
+        if new_common != current_common:
+            current_common, current_common_parents = new_common, new_common_parents
+
+    return current_common
+
+
+T = TypeVar("T")
+
+
+def _find_common_ancestor(path1: list[T], path2: list[T]) -> tuple[T, list[T]] | None:
+    """
+    Given two reversed paths (from node to root), return the lowest common ancestor.
+
+    Example:
+        path1 = ['D', 'B', 'A']
+        path2 = ['E', 'B', 'A']
+        -> returns 'B', ['B', 'A']
+    """
+    i1 = len(path1) - 1
+    i2 = len(path2) - 1
+    common: T | None = None
+
+    while i1 >= 0 and i2 >= 0 and path1[i1] == path2[i2]:
+        common = path1[i1]
+        i1 -= 1
+        i2 -= 1
+
+    if common is None:
+        return None
+
+    return common, path1[i1 + 1 :]

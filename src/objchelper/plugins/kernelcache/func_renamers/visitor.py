@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import ida_hexrays
-from ida_hexrays import mba_t, mcallarg_t, minsn_t, mop_t
+from ida_hexrays import lvar_t, mba_t, mcallarg_t, minsn_t, mop_t
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import memory, tif
@@ -40,8 +40,13 @@ class XrefsMatcher:
     """Mapping between function addresses and their callbacks"""
     indirect_calls: dict[int, list[tuple[int, CallCallback]]]
     """Mapping between indirect call offset -> type tid -> callback"""
+    untyped_indirect_call_fallback: CallCallback | None
+    """Callback for indirect call on untyped object"""
 
     def match_indirect_call(self, typ: tinfo_t, offset: int) -> CallCallback | None:
+        if not typ.is_ptr() or typ == VOID_POINTER_TYPE:
+            return self.untyped_indirect_call_fallback
+
         candidates = self.indirect_calls.get(offset)
         if candidates is None:
             return None
@@ -61,7 +66,9 @@ class XrefsMatcher:
         return None
 
     @staticmethod
-    def build(callbacks: list[tuple[[SourceXref, CallCallback]]]) -> "XrefsMatcher":
+    def build(
+        callbacks: list[tuple[SourceXref, CallCallback]], untyped_indirect_callback: CallCallback | None = None
+    ) -> "XrefsMatcher":
         """Build a matcher from the given callbacks."""
         helpers = {}
         calls = {}
@@ -74,7 +81,7 @@ class XrefsMatcher:
             elif isinstance(xref, IndirectCallXref):
                 indirect_calls.setdefault(xref.offset, []).append((xref.type.get_tid(), callback))
 
-        return XrefsMatcher(helpers, calls, indirect_calls)
+        return XrefsMatcher(helpers, calls, indirect_calls, untyped_indirect_callback)
 
 
 def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher, ref: object):
@@ -84,7 +91,7 @@ def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher, ref: object):
 
 # TODO: This is a hack, we should find a way to remove all consts
 CHAR_POINTER_TYPES = [tif.from_c_type("char*"), tif.from_c_type("const char*"), tif.from_c_type("char* const")]
-
+VOID_POINTER_TYPE = tif.from_c_type("void*")
 ParsedParam = str | int | None
 
 
@@ -104,6 +111,8 @@ class Call:
     """If the parameter is a global variable (or reference to it), return its name"""
     assignee: mop_t | None
     """The assignee of this call instruction"""
+    indirect_info: tuple[lvar_t, int] | None
+    """Info about the indirect call"""
 
     def __str__(self):
         params_str = ", ".join([
@@ -144,7 +153,7 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         if callback is None:
             return
 
-        callback(self._build_call_for_callback(ins), self.ref)
+        callback(self._build_call_for_callback(ins, indirect_info=None), self.ref)
 
     def _visit_icall(self, ins: minsn_t):
         # Search for indirect call of x->vtable->func
@@ -179,15 +188,15 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         if callback is None:
             return
 
-        callback(self._build_call_for_callback(ins), self.ref)
+        callback(self._build_call_for_callback(ins, (lvar, const_offset)), self.ref)
 
-    def _build_call_for_callback(self, ins: minsn_t) -> Call:
+    def _build_call_for_callback(self, ins: minsn_t, indirect_info: tuple[lvar_t, int] | None) -> Call:
         """Build a Call object for the given instruction."""
         params: list[mcallarg_t] = list(ins.d.f.args)
         parsed_params = [_parse_param(param) for param in params]
         parsed_params_name = [_parse_param_name(param) for param in params]
         assignee = _try_extract_assignee(self.parents)
-        return Call(self.mba.entry_ea, ins.ea, params, parsed_params, parsed_params_name, assignee)
+        return Call(self.mba.entry_ea, ins.ea, params, parsed_params, parsed_params_name, assignee, indirect_info)
 
 
 def _try_extract_assignee(parents: list[mop_t | minsn_t]) -> mop_t | None:

@@ -59,7 +59,6 @@ def apply_global_rename():
 
         print(f"Found {len(xrefs_in_funcs)} functions that call {handler.name}:")
         for j, xref_func_ea in enumerate(xrefs_in_funcs):
-            xref_func_ea = 0xFFFFFFF008D63C4C
             with Modifications(xref_func_ea, func_lvars=None) as modifications:
                 print(f"  {j + 1}/{len(xrefs_in_funcs)}: {xref_func_ea:#x}")
                 process_function_calls(mba.from_func(xref_func_ea), get_global_xref_matcher(), modifications)
@@ -69,7 +68,8 @@ def apply_global_rename():
 
 class LocalRenameHooks(Hexrays_Hooks):
     def maturity(self, cfunc: cfunc_t, new_maturity: int) -> int:
-        if new_maturity != ida_hexrays.CMAT_CPA:
+        # For some reason this maturity level is required for typing to be applied for local variables.
+        if new_maturity != ida_hexrays.CMAT_CASTED:
             return 0
 
         with Modifications(cfunc.entry_ea, func_lvars=cfunc.get_lvars()) as modifications:

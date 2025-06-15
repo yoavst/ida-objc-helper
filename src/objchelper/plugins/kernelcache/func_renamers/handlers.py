@@ -1,8 +1,7 @@
 __all__ = ["GLOBAL_HANDLERS", "LOCAL_HANDLERS"]
 
-import idautils
 
-from objchelper.idahelper import file_format, functions, memory, tif, xrefs
+from objchelper.idahelper import file_format, functions, instructions, memory, tif, xrefs
 
 from .renamer import (
     FuncHandler,
@@ -161,12 +160,12 @@ class StackCheckFail(FuncHandler):
     @staticmethod
     def get_previous_pacibsp(call_ea: int) -> int | None:
         """Given a call, search previous instructions to find a movk call"""
-        insn = idautils.DecodeInstruction(call_ea)
+        insn = instructions.decode_instruction(call_ea)
         if not insn:
             return None
 
         for _ in range(10):
-            insn, _ = idautils.DecodePrecedingInstruction(insn.ea)
+            insn = instructions.decode_previous_instruction(insn.ea)
             # No more instructions in this execution flow
             if insn is None:
                 break
@@ -177,12 +176,12 @@ class StackCheckFail(FuncHandler):
     @staticmethod
     def get_after_next_bl(call_ea: int) -> int | None:
         """Given a call, search previous instructions to find a movk call"""
-        insn = idautils.DecodeInstruction(call_ea)
+        insn = instructions.decode_instruction(call_ea)
         if not insn:
             return None
 
         for _ in range(10):
-            insn = idautils.DecodeInstruction(insn.ea + insn.size)
+            insn = instructions.decode_instruction(insn.ea + insn.size)
             # No more instructions in this execution flow
             if insn is None:
                 break

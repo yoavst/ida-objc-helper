@@ -37,6 +37,11 @@ def decode_next_instruction(insn: insn_t, func: func_t) -> insn_t | None:
     return decode_instruction(next_ea)
 
 
+def decode_previous_instruction(insn: insn_t) -> insn_t | None:
+    """Decode the previous instruction for the given insn"""
+    return idautils.DecodePrecedingInstruction(insn.ea)[0]
+
+
 def is_flow_instruction(insn: insn_t) -> bool:
     """Given an instruction, is it possible for it to influence the flow and not running the next instruction in memory"""
     feature = insn.get_canon_feature()

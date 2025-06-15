@@ -1,4 +1,5 @@
 import idaapi
+from ida_funcs import func_t
 from ida_hexrays import cfunc_t, lvar_t, lvars_t
 
 
@@ -7,12 +8,16 @@ def from_ea(ea: int) -> cfunc_t | None:
     if f is None:
         return None
 
-    decompiled = idaapi.decompile(f)
+    return from_func(f)
+
+
+def from_func(func: func_t) -> cfunc_t | None:
+    decompiled = idaapi.decompile(func)
     if decompiled is None:
         return None
     # It actually returns `cfuncptr_t` but for the sake of simplicity let's lie
     # noinspection PyTypeChecker
-    return decompiled
+    return decompiled  # type: ignore  # noqa: PGH003
 
 
 def get_lvar_by_offset(func: cfunc_t, offset: int) -> lvar_t:

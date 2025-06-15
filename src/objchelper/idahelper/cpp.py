@@ -1,7 +1,7 @@
 import idc
 from ida_typeinf import tinfo_t
 
-from objchelper.idahelper import memory
+from objchelper.idahelper import memory, tif
 
 
 def demangle(symbol: str, strict: bool = False) -> str | None:
@@ -37,3 +37,11 @@ def vtable_location_from_type(cpp_type: tinfo_t) -> int | None:
     # noinspection PyTypeChecker
     type_name: str = cpp_type.get_type_name()
     return memory.ea_from_name(f"__ZTV{len(type_name)}{type_name}")
+
+
+def type_from_vtable_name(symbol: str) -> tinfo_t | None:
+    """Given the name of the vtable symbol, return the cpp type"""
+    vtable_demangled_name = demangle(symbol)
+    if vtable_demangled_name and vtable_demangled_name.startswith("`vtable for'"):
+        cls_name = vtable_demangled_name[12:]
+        return tif.from_struct_name(cls_name)
