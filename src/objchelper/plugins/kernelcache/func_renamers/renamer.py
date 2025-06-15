@@ -77,8 +77,20 @@ class Modifications:
 
     def _apply_type_modifications(self):
         """Apply type modifications"""
-        # TODO
-        pass
+        for (name, offset), modification in self._type_modifications.items():
+            cls_type = tif.from_struct_name(name)
+            if cls_type is None:
+                print(f"Could not find class type: {name}")
+                continue
+            member = tif.get_member(cls_type, offset)
+            if member is None:
+                print(f"Could not find member at offset: {cls_type.dstr()} at {offset}")
+                return
+
+            if modification.name is not None and not tif.set_udm_name(cls_type, member, modification.name):
+                print(f"Could not rename {cls_type.dstr()} member at offset {offset} to {modification.name}")
+            if modification.type is not None and not tif.set_udm_type(cls_type, member, modification.type):
+                print(f"Could not retype {cls_type.dstr()} member at offset {offset} to {modification.type.dstr()}")
 
     # noinspection PyMethodMayBeStatic
     def _merge_modifications(

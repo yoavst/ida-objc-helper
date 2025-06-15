@@ -226,6 +226,15 @@ def set_udm_type(tif: tinfo_t, udm: udm_t, udm_type: tinfo_t) -> bool:
     return tif.set_udm_type(index, udm_type) == 0
 
 
+def set_udm_name(tif: tinfo_t, udm: udm_t, new_name: str) -> bool:
+    """For a `udm` of a `tif`, set its name"""
+    index = tif.find_udm(udm, ida_typeinf.STRMEM_OFFSET)
+    if index == -1:
+        return False
+
+    return tif.rename_udm(index, new_name) == 0
+
+
 def create_from_c_decl(decl: str) -> bool:
     """Create a new type definition from `decl`"""
     return not ida_typeinf.idc_parse_types(decl, 0)

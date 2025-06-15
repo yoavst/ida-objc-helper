@@ -44,7 +44,7 @@ class XrefsMatcher:
     """Callback for indirect call on untyped object"""
 
     def match_indirect_call(self, typ: tinfo_t, offset: int) -> CallCallback | None:
-        if not typ.is_ptr() or typ == VOID_POINTER_TYPE:
+        if (not typ.is_ptr() and not typ.is_struct()) or (typ.is_ptr() and not typ.get_pointed_object().is_struct()):
             return self.untyped_indirect_call_fallback
 
         candidates = self.indirect_calls.get(offset)
@@ -90,9 +90,25 @@ def process_function_calls(func_mba: mba_t, matcher: XrefsMatcher, ref: object):
 
 
 # TODO: This is a hack, we should find a way to remove all consts
-CHAR_POINTER_TYPES = [tif.from_c_type("char*"), tif.from_c_type("const char*"), tif.from_c_type("char* const")]
-VOID_POINTER_TYPE = tif.from_c_type("void*")
+CHAR_POINTER_TYPES: list[tinfo_t] = [
+    tif.from_c_type("char*"),
+    tif.from_c_type("const char*"),
+    tif.from_c_type("char* const"),
+]  # type: ignore  # noqa: PGH003
+VOID_POINTER_TYPE: tinfo_t = tif.from_c_type("void*")  # type: ignore  # noqa: PGH003
 ParsedParam = str | int | None
+
+
+@dataclass
+class IndirectCallInfo:
+    target_mop: mop_t
+    """The target operand of the indirect call"""
+    offset: int
+    """The offset in the vtable of the call"""
+    var: lvar_t | None = None
+    """If called on a var, the var"""
+    field: tuple[tinfo_t, int] | None = None
+    """If called on a field, the type and the offset"""
 
 
 @dataclass
@@ -111,7 +127,7 @@ class Call:
     """If the parameter is a global variable (or reference to it), return its name"""
     assignee: mop_t | None
     """The assignee of this call instruction"""
-    indirect_info: tuple[lvar_t, int] | None
+    indirect_info: IndirectCallInfo | None
     """Info about the indirect call"""
 
     def __str__(self):
@@ -155,8 +171,8 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
 
         callback(self._build_call_for_callback(ins, indirect_info=None), self.ref)
 
-    def _visit_icall(self, ins: minsn_t):
-        # Search for indirect call of x->vtable->func
+    def _visit_icall(self, ins: minsn_t):  # noqa: C901
+        # Search for indirect call of x->vtable->func or x->field->vtable->func
         # Which is x => *x => *x->vtable (offset 0) => *x->vtable + offsetOf(func) => *x->vtable->func
         # Expects ldx
         if ins.r.t != ida_hexrays.mop_d or ins.r.d.opcode != ida_hexrays.m_ldx:
@@ -173,24 +189,54 @@ class StaticCallExtractorVisitor(extended_microcode_visitor_t):
         if const_offset is None:
             return
 
-        # Except ldx of reading a local variable
+        # Except ldx
         if add_ins.l.t != ida_hexrays.mop_d or add_ins.l.d.opcode != ida_hexrays.m_ldx:
             return
         ldx_ins_2 = add_ins.l.d
 
-        # Expect local
-        if ldx_ins_2.r.t != ida_hexrays.mop_l:
-            return
-        lvar = ldx_ins_2.r.l.var()
-        lvar_type = lvar.type()
+        # Maybe expect local
+        if ldx_ins_2.r.t == ida_hexrays.mop_l:
+            lvar = ldx_ins_2.r.l.var()
+            lvar_type = lvar.type()
+            callback = self.matcher.match_indirect_call(lvar_type, const_offset)
+            indirect_info = IndirectCallInfo(ldx_ins_2.r, const_offset, var=lvar)
+        # Maybe expect ldx of an add with const
+        elif ldx_ins_2.r.t == ida_hexrays.mop_d and ldx_ins_2.r.d.opcode == ida_hexrays.m_ldx:
+            ldx_ins_3 = ldx_ins_2.r.d
 
-        callback = self.matcher.match_indirect_call(lvar_type, const_offset)
+            # Expect add with const
+            if ldx_ins_3.r.t != ida_hexrays.mop_d or ldx_ins_3.r.d.opcode != ida_hexrays.m_add:
+                return
+
+            add_ins_2 = ldx_ins_3.r.d
+            const_offset_2 = mop.get_const_int(add_ins_2.r)
+            if const_offset_2 is None:
+                return
+
+            # Expect local
+            if add_ins_2.l.t != ida_hexrays.mop_l:
+                return
+
+            lvar = add_ins_2.l.l.var()
+            lvar_type: tinfo_t = lvar.type()
+            if lvar_type.is_ptr():
+                lvar_type = lvar_type.get_pointed_object()
+            field_type = self._try_get_memeber_type(lvar_type, const_offset_2)
+            callback = self.matcher.match_indirect_call(field_type, const_offset)
+            indirect_info = IndirectCallInfo(ldx_ins_2.r, const_offset, field=(lvar_type, const_offset_2))
+        else:
+            return
+
         if callback is None:
             return
 
-        callback(self._build_call_for_callback(ins, (lvar, const_offset)), self.ref)
+        callback(self._build_call_for_callback(ins, indirect_info), self.ref)
 
-    def _build_call_for_callback(self, ins: minsn_t, indirect_info: tuple[lvar_t, int] | None) -> Call:
+    def _try_get_memeber_type(self, typ: tinfo_t, offset: int) -> tinfo_t:
+        member = tif.get_member(typ, offset)
+        return member.type if member is not None else VOID_POINTER_TYPE
+
+    def _build_call_for_callback(self, ins: minsn_t, indirect_info: IndirectCallInfo | None) -> Call:
         """Build a Call object for the given instruction."""
         params: list[mcallarg_t] = list(ins.d.f.args)
         parsed_params = [_parse_param(param) for param in params]

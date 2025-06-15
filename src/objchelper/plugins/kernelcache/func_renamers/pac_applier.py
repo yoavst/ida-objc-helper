@@ -20,18 +20,31 @@ def apply_pac(func: func_t):
     with Modifications(decompiled_func.entry_ea, decompiled_func.get_lvars()) as modifications:
         process_function_calls(decompiled_func.mba, xref_matcher, modifications)
 
+    return True
+
 
 def on_unknown_call(call: Call, modifications: Modifications):
     """Called when a call is found"""
     if call.indirect_info is None:
         return
 
-    lvar, _ = call.indirect_info
     prev_mvok = pac.get_previous_movk(call.ea)
     if prev_mvok is None:
         return
     candidates = pac.pac_class_candidates_from_movk(prev_mvok)
     ancestor = tif.get_common_ancestor(candidates)
     if ancestor is not None:
-        modifications.modify_local(lvar.name, VariableModification(type=tif.pointer_of(ancestor)))
-        print(f"Applying PAC call info on {lvar.name}. Changing its type to {ancestor.dstr()}")
+        if call.indirect_info.var is not None:
+            lvar = call.indirect_info.var
+            modifications.modify_local(lvar.name, VariableModification(type=tif.pointer_of(ancestor)))
+            print(f"Applying PAC call info on {lvar.name}. Changing its type to {ancestor.dstr()}")
+        elif call.indirect_info.field is not None:
+            cls_type, offset = call.indirect_info.field
+            modifications.modify_type(
+                cls_type.get_type_name(),  # type: ignore  # noqa: PGH003
+                offset,
+                VariableModification(type=tif.pointer_of(ancestor)),
+            )
+            print(
+                f"Applying PAC call info on {cls_type.dstr()} at offset {offset:X}. Changing its type to {ancestor.dstr()}*"
+            )
