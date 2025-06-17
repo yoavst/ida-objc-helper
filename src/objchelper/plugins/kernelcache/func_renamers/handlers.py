@@ -128,7 +128,7 @@ class StackCheckFail(FuncHandler):
         if existing is not None:
             return FuncXref(existing)
         searched = list(xrefs.string_xrefs_to("stack_protector.c"))
-        if searched is None:
+        if not searched:
             print("[Error] Could not find xrefs to 'stack_protector.c' for", self.name)
             return None
         ldr_addr = searched[0]
@@ -165,7 +165,7 @@ class StackCheckFail(FuncHandler):
             return None
 
         for _ in range(10):
-            insn = instructions.decode_previous_instruction(insn.ea)
+            insn = instructions.decode_previous_instruction(insn)
             # No more instructions in this execution flow
             if insn is None:
                 break
