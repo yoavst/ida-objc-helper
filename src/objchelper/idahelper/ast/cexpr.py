@@ -1,6 +1,6 @@
 import ida_bytes
 import ida_hexrays
-from ida_hexrays import carg_t, carglist_t, cexpr_t, cfunc_t, lvar_t, number_format_t, var_ref_t
+from ida_hexrays import carg_t, carglist_t, cexpr_t, cfuncptr_t, lvar_t, number_format_t, var_ref_t
 from ida_typeinf import tinfo_t
 
 from objchelper.idahelper import memory
@@ -36,15 +36,21 @@ def from_var(var: var_ref_t) -> cexpr_t:
     return var_expr
 
 
-def from_var_name(name: str, func: cfunc_t) -> cexpr_t:
-    """Create a cexpr_t from a variable name and the container function."""
+def from_lvar_index(lvar_index: int, func: cfuncptr_t) -> cexpr_t:
+    """Create a cexpr_t from a lvar index in func."""
     var_ref = var_ref_t()
     var_ref.mba = func.mba
-    var_ref.idx = lvars.get_index_by_name(func.get_lvars(), name)
+    var_ref.idx = lvar_index
+
     return from_var(var_ref)
 
 
-def from_const_value(x: int, cur_func: cfunc_t = None, is_hex: bool = False) -> cexpr_t:
+def from_var_name(name: str, func: cfuncptr_t) -> cexpr_t:
+    """Create a cexpr_t from a variable name and the container function."""
+    return from_lvar_index(lvars.get_index_by_name(func.get_lvars(), name), func)
+
+
+def from_const_value(x: int, cur_func: cfuncptr_t | None = None, is_hex: bool = False) -> cexpr_t:
     """Create a cexpr_t from a constant value."""
     num = ida_hexrays.make_num(x, cur_func)
     if is_hex:

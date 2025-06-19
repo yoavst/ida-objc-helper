@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import ida_hexrays
 from ida_hexrays import (
     cexpr_t,
-    cfunc_t,
+    cfuncptr_t,
     cinsn_t,
     lvar_t,
 )
@@ -34,7 +34,7 @@ IDA_BLOCK_TYPE_BASE_FIELD_NAMES = {
 FLAG_BLOCK_HAS_COPY_DISPOSE = 1 << 25
 
 
-def get_ida_block_lvars(func: cfunc_t) -> list[lvar_t]:
+def get_ida_block_lvars(func: cfuncptr_t) -> list[lvar_t]:
     """Get all Obj-C block variables in the function"""
     return [lvar for lvar in func.get_lvars() if is_block_type(lvar.type())]
 

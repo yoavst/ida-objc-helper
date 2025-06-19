@@ -17,6 +17,11 @@ def get_xrefs_to(ea: int, is_data: bool = False) -> list[int]:
     return [xref.frm for xref in idautils.XrefsTo(ea, ida_xref.XREF_DATA if is_data else 0)]
 
 
+def code_xrefs_to(ea: int) -> list[int]:
+    """Get all code xrefs to the given EA"""
+    return list(idautils.CodeRefsTo(ea, 1))
+
+
 def func_xrefs_to(func_ea: int) -> set[int]:
     """Get all xrefs to the given EA, grouped by function"""
     xrefs_in_funcs = set()

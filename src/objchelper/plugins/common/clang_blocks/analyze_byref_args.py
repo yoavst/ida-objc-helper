@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import ida_hexrays
 from ida_hexrays import (
     cexpr_t,
-    cfunc_t,
+    cfuncptr_t,
     mba_t,
     minsn_t,
     mop_t,
@@ -31,7 +31,7 @@ from .block_arg_byref import (
 from .utils import StructFieldAssignment, get_struct_fields_assignments
 
 
-def try_add_block_arg_byref_to_func(func: cfunc_t) -> None:
+def try_add_block_arg_byref_to_func(func: cfuncptr_t) -> None:
     block_lvars = get_ida_block_lvars(func)
     if not block_lvars:
         return

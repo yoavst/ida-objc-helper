@@ -42,7 +42,12 @@ class ClangBlockDetectByrefAction(ida_kernwin.action_handler_t):
 
         run_objc_plugin_on_func(ctx.cur_ea)
         widgets.refresh_pseudocode_widgets()
-        try_add_block_arg_byref_to_func(cfunc.from_ea(ctx.cur_ea))
+        decompiled = cfunc.from_ea(ctx.cur_ea)
+        if decompiled is None:
+            print(f"Failed to decompile func at {ctx.cur_ea:X}")
+            return
+
+        try_add_block_arg_byref_to_func(decompiled)
         return 0
 
     def update(self, ctx) -> int:

@@ -76,3 +76,9 @@ def remove_flag_to_function(func: int | func_t, flag: int) -> bool:
 
     _func.flags &= ~flag
     return ida_funcs.update_func(_func)
+
+
+def get_next_function(func: int | func_t) -> func_t | None:
+    """Given a function, return the next function in the binary"""
+    ea = func.start_ea if isinstance(func, func_t) else func
+    return ida_funcs.get_next_func(ea)

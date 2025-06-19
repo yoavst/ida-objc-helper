@@ -113,7 +113,7 @@ def pointer_of(tif: tinfo_t) -> tinfo_t:
 def get_udt(tif: tinfo_t) -> udt_type_data_t | None:
     """Get udt from tif"""
     if not tif.is_struct():
-        print("Not a struct type!")
+        print(f"[Error] get_udt: Not a struct type - {tif.dstr()}")
         return None
 
     udt_data = udt_type_data_t()
@@ -125,7 +125,7 @@ def get_udt(tif: tinfo_t) -> udt_type_data_t | None:
 def get_member(tif: tinfo_t, offset: int) -> udm_t | None:
     """Get member of a struct at given offset"""
     if not tif.is_struct():
-        print("Not a struct type!")
+        print(f"[Error] get_member: Not a struct type - {tif.dstr()}")
         return None
 
     udm = udm_t()

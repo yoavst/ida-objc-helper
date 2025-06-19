@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import ida_hexrays
 import idaapi
-from ida_hexrays import cexpr_t, cfunc_t, cinsn_t, lvar_t
+from ida_hexrays import cexpr_t, cfuncptr_t, cinsn_t, lvar_t
 from ida_typeinf import tinfo_t, udm_t
 
 from objchelper.idahelper import tif
@@ -79,10 +79,10 @@ def remove_ref_cast_dref(expr: cexpr_t) -> cexpr_t:
     return expr
 
 
-def get_struct_fields_assignments(cfunc: cfunc_t, lvars: list[lvar_t]) -> dict[str, list[StructFieldAssignment]]:
+def get_struct_fields_assignments(cfunc: cfuncptr_t, lvars: list[lvar_t]) -> dict[str, list[StructFieldAssignment]]:
     """Get all assignments of the form "a.b = c" to the given local variables"""
     collector = LvarFieldsAssignmentsCollector(lvars)
-    collector.apply_to(cfunc.body, None)
+    collector.apply_to(cfunc.body, None)  # pyright: ignore[reportArgumentType]
     return collector.assignments
 
 
